@@ -18,7 +18,7 @@ export interface Appointment {
 export const doctor = {
   fullName: "Шарипов Муслим Юнусалиевич",
   firstNamePatronymic: "Шарипов Муслим",
-  shortName: "Алибеков С.М.",
+  shortName: "Шарипов М.Ю.",
   initials: "AC",
   role: "Терапевт",
   area: "Участок №3",
