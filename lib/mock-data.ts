@@ -16,8 +16,8 @@ export interface Appointment {
 
 // Данные врача — позже придут из авторизации
 export const doctor = {
-  fullName: "Алибеков Серик Маратович",
-  firstNamePatronymic: "Серик Маратович",
+  fullName: "Шарипов Муслим Юнусалиевич",
+  firstNamePatronymic: "Шарипов Муслим",
   shortName: "Алибеков С.М.",
   initials: "AC",
   role: "Терапевт",
