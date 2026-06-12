@@ -22,7 +22,7 @@ export default function Sidebar() {
       <div className="flex h-14 items-center gap-2 px-5">
         <Activity className="h-5 w-5 text-[#1a5c3a]" strokeWidth={2.5} />
         <span className="text-lg font-bold tracking-tight text-[#1a5c3a]">
-          MedIS
+          IbnSina
         </span>
       </div>
 

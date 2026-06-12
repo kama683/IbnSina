@@ -20,7 +20,7 @@ export const doctor = {
   firstNamePatronymic: "Шарипов Муслим",
   shortName: "Шарипов М.Ю.",
   initials: "AC",
-  role: "Терапевт",
+  role: "Эндокринолог ",
   area: "Участок №3",
 };
 
