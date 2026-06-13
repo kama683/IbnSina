@@ -6,3 +6,28 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Python (back/)
+back/.venv/
+back/__pycache__/
+back/**/__pycache__/
+back/**/*.py[cod]
+back/.env
+!back/.env.example
+
+# Node / Next.js (front/)
+front/node_modules/
+front/.next/
+front/out/
+front/build/
+front/.vercel
+front/*.tsbuildinfo
+front/next-env.d.ts
+front/.env*
+!front/.env.example
+
+# Логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
