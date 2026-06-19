@@ -10,6 +10,7 @@ import {
   FileText,
   Settings,
   LogOut,
+  UserRound,
 } from "lucide-react";
 import { doctor } from "@/lib/mock-data";
 
@@ -56,6 +57,12 @@ export default function Sidebar() {
           />
         </NavGroup>
         <NavGroup title="Система">
+          <NavItem
+            href="/profile"
+            icon={UserRound}
+            label="Профиль"
+            pathname={pathname}
+          />
           <NavItem
             href="/settings"
             icon={Settings}

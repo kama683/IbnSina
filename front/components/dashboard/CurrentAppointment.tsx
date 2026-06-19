@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { Clock, ChevronRight } from "lucide-react";
 import type { Appointment } from "@/lib/mock-data";
 
 type Props = {
   appointment: Appointment;
+  patientId?: string;
 };
 
-export default function CurrentAppointment({ appointment }: Props) {
+export default function CurrentAppointment({ appointment, patientId = "1" }: Props) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-4 border-l-4 border-amber-400 px-5 py-4">
@@ -25,13 +27,13 @@ export default function CurrentAppointment({ appointment }: Props) {
           </div>
         </div>
 
-        <button
-          type="button"
+        <Link
+          href={`/patients/${patientId}`}
           className="flex shrink-0 items-center gap-1 rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
         >
           Открыть
           <ChevronRight className="h-4 w-4" />
-        </button>
+        </Link>
       </div>
     </div>
   );
