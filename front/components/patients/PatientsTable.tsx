@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import DiseaseTag from "@/components/ui/DiseaseTag";
 import type { Patient } from "@/lib/mock-data";
 import { ChevronRight } from "lucide-react";
 
@@ -15,6 +16,11 @@ type Props = {
 
 function formatIin(iin: string) {
   return `${iin.slice(0, 6)} ${iin.slice(6)}`;
+}
+
+function formatBirthDate(birthDate: string, ageLabel: string) {
+  const age = ageLabel.match(/\d+/)?.[0];
+  return age ? `${birthDate}  ${age} л.` : birthDate;
 }
 
 export default function PatientsTable({
@@ -33,13 +39,13 @@ export default function PatientsTable({
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="border-b border-gray-100 text-[10px] font-medium uppercase tracking-wider text-gray-400">
+            <tr className="border-b border-gray-100 bg-gray-50/80 text-[10px] font-medium uppercase tracking-wider text-gray-400">
               <th className="px-5 py-2.5">ФИО</th>
               <th className="px-5 py-2.5">ИИН</th>
               <th className="px-5 py-2.5">Дата рождения</th>
               <th className="px-5 py-2.5">Участок</th>
               <th className="px-5 py-2.5">Последний приём</th>
-              <th className="px-5 py-2.5">Диспансер</th>
+              <th className="px-5 py-2.5">Заболевания</th>
               <th className="px-5 py-2.5">Действия</th>
             </tr>
           </thead>
@@ -56,8 +62,7 @@ export default function PatientsTable({
                   {formatIin(patient.iin)}
                 </td>
                 <td className="px-5 py-3 text-sm text-gray-500">
-                  {patient.birthDate}{" "}
-                  <span className="text-gray-400">({patient.ageLabel})</span>
+                  {formatBirthDate(patient.birthDate, patient.ageLabel)}
                 </td>
                 <td className="px-5 py-3 text-sm text-gray-500">
                   {patient.area}
@@ -66,10 +71,16 @@ export default function PatientsTable({
                   {patient.lastAppointment ?? "—"}
                 </td>
                 <td className="px-5 py-3">
-                  {patient.dispensary ? (
-                    <span className="inline-flex rounded-md bg-[#e8f5ee] px-2 py-0.5 text-[11px] font-medium leading-4 text-[#1a5c3a]">
-                      Да
-                    </span>
+                  {patient.diseases.length > 0 ? (
+                    <div className="flex max-w-[220px] flex-wrap gap-1.5">
+                      {patient.diseases.map((disease) => (
+                        <DiseaseTag
+                          key={disease.label}
+                          label={disease.label}
+                          variant={disease.variant}
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <span className="text-sm text-gray-400">—</span>
                   )}

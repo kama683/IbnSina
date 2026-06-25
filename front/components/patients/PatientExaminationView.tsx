@@ -24,11 +24,11 @@ export default function PatientExaminationView({
     <div className="mx-auto max-w-[1400px] space-y-5">
       <div>
         <Link
-          href="/patients"
+          href={`/patients/${patient.id}`}
           className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
         >
           <ChevronLeft className="h-4 w-4" />
-          Назад к списку
+          Назад к профилю
         </Link>
 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

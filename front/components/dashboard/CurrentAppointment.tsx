@@ -28,7 +28,7 @@ export default function CurrentAppointment({ appointment, patientId = "1" }: Pro
         </div>
 
         <Link
-          href={`/patients/${patientId}`}
+          href={`/patients/${patientId}/examination`}
           className="flex shrink-0 items-center gap-1 rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
         >
           Открыть

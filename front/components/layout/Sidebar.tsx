@@ -6,8 +6,8 @@ import {
   Activity,
   LayoutDashboard,
   Calendar,
+  MonitorCheck,
   Users,
-  FileText,
   Settings,
   LogOut,
   UserRound,
@@ -20,10 +20,12 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex">
       {/* Логотип MedIS + иконка пульса */}
-      <div className="flex h-14 items-center gap-2 px-5">
-        <Activity className="h-5 w-5 text-[#1a5c3a]" strokeWidth={2.5} />
-        <span className="text-lg font-bold tracking-tight text-[#1a5c3a]">
-          IbnSina
+      <div className="flex h-14 items-center gap-2.5 px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a5c3a]">
+          <Activity className="h-4 w-4 text-white" strokeWidth={2.5} />
+        </div>
+        <span className="text-lg font-bold tracking-tight text-gray-900">
+          MedIS
         </span>
       </div>
 
@@ -41,18 +43,18 @@ export default function Sidebar() {
             label="Приёмы"
             pathname={pathname}
           />
+          <NavItem
+            href="/queue"
+            icon={MonitorCheck}
+            label="Живая очередь"
+            pathname={pathname}
+          />
         </NavGroup>
         <NavGroup title="Данные">
           <NavItem
             href="/patients"
             icon={Users}
             label="Пациенты"
-            pathname={pathname}
-          />
-          <NavItem
-            href="/documents"
-            icon={FileText}
-            label="Документы"
             pathname={pathname}
           />
         </NavGroup>
@@ -125,15 +127,12 @@ function NavItem({
     <li>
       <Link
         href={href}
-        className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
           isActive
             ? "bg-[#e8f5ee] font-medium text-[#1a5c3a]"
             : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
         }`}
       >
-        {isActive && (
-          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#1a5c3a]" />
-        )}
         <Icon size={18} strokeWidth={isActive ? 2.25 : 2} />
         {label}
       </Link>

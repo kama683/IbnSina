@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import PatientExaminationView from "@/components/patients/PatientExaminationView";
+import PatientProfileView from "@/components/patients/profile/PatientProfileView";
 import {
   getPatientById,
-  getPatientExamination,
-  getPatientVisitHistory,
+  getPatientHealthMetrics,
+  getPatientMedicalHistory,
+  getPatientVaccinations,
 } from "@/lib/mock-data";
 
 type Props = {
@@ -18,14 +19,12 @@ export default async function PatientPage({ params }: Props) {
     notFound();
   }
 
-  const examination = getPatientExamination(id);
-  const history = getPatientVisitHistory(id);
-
   return (
-    <PatientExaminationView
+    <PatientProfileView
       patient={patient}
-      examination={examination}
-      history={history}
+      history={getPatientMedicalHistory(id)}
+      healthMetrics={getPatientHealthMetrics(id)}
+      vaccinations={getPatientVaccinations(id)}
     />
   );
 }
