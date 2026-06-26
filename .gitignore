@@ -9,6 +9,7 @@ Thumbs.db
 
 # Python (back/)
 back/.venv/
+back/venv/
 back/__pycache__/
 back/**/__pycache__/
 back/**/*.py[cod]
