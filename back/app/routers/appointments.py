@@ -13,8 +13,9 @@ def _serialize_appointment(appointment: Appointment) -> dict:
     return {
         "id": str(appointment.id),
         "time": appointment.time,
-        "patient": appointment.patient.full_name,
+        "patient": appointment.patient.short_name,
         "complaint": appointment.complaint,
+        "diagnosis": appointment.diagnosis,
         "status": appointment.status.value,
     }
 
