@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
-import type { Appointment } from "@/lib/mock-data";
+import type { Appointment } from "@/lib/types";
 
 type Props = {
   appointments: Appointment[];
+  subtitle: string;
 };
 
-export default function TodayAppointments({ appointments }: Props) {
+export default function TodayAppointments({ appointments, subtitle }: Props) {
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
@@ -15,9 +16,7 @@ export default function TodayAppointments({ appointments }: Props) {
           <h2 className="text-sm font-semibold text-gray-900">
             Приёмы на сегодня
           </h2>
-          <p className="mt-0.5 text-xs text-gray-500">
-            28 мая 2026 — Кабинет 214
-          </p>
+          <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
         </div>
         <Link
           href="/appointments"

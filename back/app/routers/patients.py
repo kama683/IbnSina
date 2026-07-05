@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -9,6 +9,7 @@ from app.models.appointment import Appointment, AppointmentStatus
 from app.models.health_metric import HealthMetric
 from app.models.hospitalization import Hospitalization
 from app.models.vaccination import Vaccination
+from app.schemas.patient import PatientCreateIn
 
 router = APIRouter()
 
@@ -17,6 +18,15 @@ _PATIENT_LOAD_OPTIONS = (
     joinedload(Patient.allergies),
     joinedload(Patient.hospitalizations).joinedload(Hospitalization.doctor),
 )
+
+
+def _build_short_name(full_name: str) -> str:
+    parts = full_name.split()
+    if len(parts) >= 3:
+        return f"{parts[0]} {parts[1][0]}.{parts[2][0]}."
+    if len(parts) == 2:
+        return f"{parts[0]} {parts[1][0]}."
+    return full_name
 
 
 def _age_label(birth_date: date) -> str:
@@ -218,14 +228,69 @@ def _serialize_visit_history(appointment: Appointment) -> dict:
 
 
 @router.get("")
-def list_patients(db: Session = Depends(get_db)):
+def list_patients(
+    page: int = Query(1, ge=1),
+    limit: int = Query(8, ge=1, le=100),
+    search: str = Query(""),
+    area: str = Query(""),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Patient).options(*_PATIENT_LOAD_OPTIONS)
+
+    normalized_search = search.strip().lower()
+    if normalized_search:
+        query = query.filter(
+            Patient.full_name.ilike(f"%{normalized_search}%")
+            | Patient.iin.ilike(f"%{normalized_search.replace(' ', '')}%")
+        )
+
+    if area and area != "all":
+        query = query.filter(Patient.area == area)
+
+    total = query.count()
     patients = (
-        db.query(Patient)
-        .options(*_PATIENT_LOAD_OPTIONS)
-        .order_by(Patient.full_name)
+        query.order_by(Patient.full_name)
+        .offset((page - 1) * limit)
+        .limit(limit)
         .all()
     )
-    return [_serialize_patient(db, patient) for patient in patients]
+    areas = [
+        row[0]
+        for row in db.query(Patient.area).distinct().order_by(Patient.area).all()
+    ]
+
+    return {
+        "items": [_serialize_patient(db, patient) for patient in patients],
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "areas": areas,
+    }
+
+
+@router.post("")
+def create_patient(payload: PatientCreateIn, db: Session = Depends(get_db)):
+    existing = db.query(Patient).filter(Patient.iin == payload.iin).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Пациент с таким ИИН уже существует")
+
+    patient = Patient(
+        full_name=payload.full_name,
+        short_name=_build_short_name(payload.full_name),
+        iin=payload.iin,
+        birth_date=payload.birth_date,
+        gender=payload.gender,
+        phone=payload.phone,
+        address=payload.address,
+        area=payload.area,
+        blood_type=payload.blood_type,
+        dispensary=payload.dispensary,
+    )
+    db.add(patient)
+    db.commit()
+
+    patient = _get_patient_or_404(db, patient.id)
+    return _serialize_patient(db, patient)
 
 
 @router.get("/{patient_id}/history")

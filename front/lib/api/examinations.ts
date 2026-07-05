@@ -1,10 +1,10 @@
 import { apiPatch } from "./api";
 import type {
+  Appointment,
+  AppointmentStatus,
   Diagnosis,
-  PatientExamination,
   Prescription,
-} from "@/lib/mock-data";
-import type { AppointmentStatus } from "@/lib/mock-data";
+} from "@/lib/types";
 
 export type ExaminationUpdatePayload = {
   complaints: string;
@@ -18,9 +18,6 @@ export type ExaminationUpdatePayload = {
 export function updateExamination(
   appointmentId: string,
   payload: ExaminationUpdatePayload,
-): Promise<PatientExamination> {
-  return apiPatch<PatientExamination>(
-    `/api/appointments/${appointmentId}`,
-    payload,
-  );
+): Promise<Appointment> {
+  return apiPatch<Appointment>(`/api/appointments/${appointmentId}`, payload);
 }

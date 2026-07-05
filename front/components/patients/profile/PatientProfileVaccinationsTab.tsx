@@ -1,4 +1,4 @@
-import type { Vaccination } from "@/lib/mock-data";
+import type { Vaccination } from "@/lib/types";
 
 type Props = {
   vaccinations: Vaccination[];

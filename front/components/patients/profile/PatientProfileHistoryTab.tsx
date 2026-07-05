@@ -1,5 +1,5 @@
 import StatusBadge from "@/components/ui/StatusBadge";
-import type { PatientMedicalHistoryEntry } from "@/lib/mock-data";
+import type { PatientMedicalHistoryEntry } from "@/lib/types";
 
 type Props = {
   history: PatientMedicalHistoryEntry[];

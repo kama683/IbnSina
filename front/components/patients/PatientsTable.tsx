@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import DiseaseTag from "@/components/ui/DiseaseTag";
-import type { Patient } from "@/lib/mock-data";
+import type { Patient } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 
 type Props = {

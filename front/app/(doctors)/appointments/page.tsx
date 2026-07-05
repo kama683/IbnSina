@@ -1,20 +1,35 @@
 import Link from "next/link";
 import AppointmentsContent from "@/components/appointments/AppointmentsContent";
 import {
+  getAppointmentsInRange,
   getTodayAppointments,
-  getWeekAppointments,
 } from "@/lib/api/appointments";
 import { getCurrentDoctor } from "@/lib/api/doctors";
-import { buildCalendarWeek } from "@/lib/calendar-utils";
+import { getPatients } from "@/lib/api/patients";
+import {
+  buildCalendarWeek,
+  getCurrentWeekIsoRange,
+  getDateForWeekOffset,
+} from "@/lib/calendar-utils";
 
-export default async function AppointmentsPage() {
-  const [listAppointments, calendarAppointments, doctor] = await Promise.all([
-    getTodayAppointments(),
-    getWeekAppointments(),
-    getCurrentDoctor(),
-  ]);
+type Props = {
+  searchParams: Promise<{ week?: string }>;
+};
 
-  const calendarWeek = buildCalendarWeek();
+export default async function AppointmentsPage({ searchParams }: Props) {
+  const { week } = await searchParams;
+  const weekOffset = Number.parseInt(week ?? "0", 10) || 0;
+  const weekDate = getDateForWeekOffset(weekOffset);
+  const { from, to } = getCurrentWeekIsoRange(weekDate);
+  const calendarWeek = buildCalendarWeek(weekDate);
+
+  const [listAppointments, calendarAppointments, doctor, patientsPage] =
+    await Promise.all([
+      getTodayAppointments(),
+      getAppointmentsInRange(from, to),
+      getCurrentDoctor(),
+      getPatients({ page: 1, limit: 100 }),
+    ]);
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
@@ -32,10 +47,14 @@ export default async function AppointmentsPage() {
       </div>
 
       <AppointmentsContent
-        listAppointments={listAppointments}
+        initialListAppointments={listAppointments}
         calendarAppointments={calendarAppointments}
         calendarWeek={calendarWeek}
         doctorShortName={doctor.shortName}
+        doctorOffice={doctor.office}
+        doctorFullName={doctor.fullName}
+        weekOffset={weekOffset}
+        patients={patientsPage.items}
       />
     </div>
   );

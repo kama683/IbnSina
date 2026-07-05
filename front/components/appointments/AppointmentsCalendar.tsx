@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Appointment } from "@/lib/mock-data";
+import type { Appointment } from "@/lib/types";
 import {
   TIME_SLOTS,
   calendarStatusStyles,
@@ -10,6 +10,9 @@ type Props = {
   appointments: Appointment[];
   week: CalendarWeek;
   doctorShortName: string;
+  doctorOffice: string;
+  onPrevWeek: () => void;
+  onNextWeek: () => void;
 };
 
 function findAppointment(
@@ -24,6 +27,9 @@ export default function AppointmentsCalendar({
   appointments,
   week,
   doctorShortName,
+  doctorOffice,
+  onPrevWeek,
+  onNextWeek,
 }: Props) {
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
@@ -31,6 +37,7 @@ export default function AppointmentsCalendar({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={onPrevWeek}
             className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             aria-label="Предыдущая неделя"
           >
@@ -41,6 +48,7 @@ export default function AppointmentsCalendar({
           </span>
           <button
             type="button"
+            onClick={onNextWeek}
             className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             aria-label="Следующая неделя"
           >
@@ -48,7 +56,8 @@ export default function AppointmentsCalendar({
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          {doctorShortName} — Кабинет 214
+          {doctorShortName}
+          {doctorOffice ? ` — ${doctorOffice}` : ""}
         </p>
       </div>
 

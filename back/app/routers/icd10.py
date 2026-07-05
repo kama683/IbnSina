@@ -1,0 +1,25 @@
+import json
+from pathlib import Path
+
+from fastapi import APIRouter, Query
+
+router = APIRouter()
+
+_DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "icd10_common.json"
+_CODES: list[dict[str, str]] = json.loads(_DATA_PATH.read_text(encoding="utf-8"))
+
+
+@router.get("")
+def search_icd10(q: str = Query("", min_length=0)):
+    query = q.strip().lower()
+    if not query:
+        return []
+
+    results = []
+    for item in _CODES:
+        haystack = f"{item['code']} {item['name']}".lower()
+        if query in haystack:
+            results.append(item)
+        if len(results) >= 10:
+            break
+    return results

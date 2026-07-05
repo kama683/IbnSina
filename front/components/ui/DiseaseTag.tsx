@@ -1,4 +1,4 @@
-import type { DiseaseTagVariant } from "@/lib/mock-data";
+import type { DiseaseTagVariant } from "@/lib/types";
 
 const variantStyles: Record<DiseaseTagVariant, string> = {
   green: "bg-[#e8f5ee] text-[#1a5c3a]",

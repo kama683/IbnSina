@@ -20,5 +20,15 @@ class AppointmentUpdateIn(BaseModel):
     diagnoses: list[DiagnosisIn] | None = None
     prescriptions: list[PrescriptionIn] | None = None
     status: AppointmentStatus | None = None
+    duration_minutes: int | None = Field(None, alias="durationMinutes")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AppointmentCreateIn(BaseModel):
+    patient_id: int = Field(alias="patientId")
+    date: date
+    time: str
+    complaint: str
 
     model_config = ConfigDict(populate_by_name=True)

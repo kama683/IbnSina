@@ -1,4 +1,4 @@
-import type { Patient, PatientVisitHistory } from "@/lib/mock-data";
+import type { Patient, PatientVisitHistory } from "@/lib/types";
 import StatusBadge from "@/components/ui/StatusBadge";
 
 type Props = {

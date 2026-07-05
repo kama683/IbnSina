@@ -1,4 +1,4 @@
-import type { AppointmentStatus } from "@/lib/mock-data";
+import type { AppointmentStatus } from "@/lib/types";
 
 const statusConfig: Record<
   AppointmentStatus,

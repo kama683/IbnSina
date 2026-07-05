@@ -1,4 +1,4 @@
-import type { HealthMetric } from "@/lib/mock-data";
+import type { HealthMetric } from "@/lib/types";
 
 type Props = {
   metrics: HealthMetric[];

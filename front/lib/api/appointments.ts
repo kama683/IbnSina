@@ -1,5 +1,15 @@
-import { apiGet, apiPatch } from "./api";
-import type { Appointment } from "@/lib/mock-data";
+import { apiGet, apiPatch, apiPost } from "./api";
+import type { Appointment } from "@/lib/types";
+
+export interface WeekStats {
+  period: string;
+  total: number;
+  completed: number;
+  cancelled: number;
+  newPatients: number;
+  dispensary: number;
+  avgMinutes: number;
+}
 
 /** Приёмы на сегодня (GET /api/appointments/today). */
 export function getTodayAppointments(): Promise<Appointment[]> {
@@ -9,6 +19,11 @@ export function getTodayAppointments(): Promise<Appointment[]> {
 /** Приёмы за текущую неделю, пн–сб (GET /api/appointments/week). */
 export function getWeekAppointments(): Promise<Appointment[]> {
   return apiGet<Appointment[]>("/api/appointments/week");
+}
+
+/** Статистика за текущую неделю (GET /api/appointments/stats/week). */
+export function getWeekStats(): Promise<WeekStats> {
+  return apiGet<WeekStats>("/api/appointments/stats/week");
 }
 
 /** Приёмы за произвольный период (GET /api/appointments?from=&to=). */
@@ -36,4 +51,23 @@ export function updateAppointmentStatus(
   status: Appointment["status"],
 ): Promise<Appointment> {
   return apiPatch<Appointment>(`/api/appointments/${id}`, { status });
+}
+
+export type AppointmentCreatePayload = {
+  patientId: string;
+  date: string;
+  time: string;
+  complaint: string;
+};
+
+/** Записать пациента на приём (POST /api/appointments). */
+export function createAppointment(
+  payload: AppointmentCreatePayload,
+): Promise<Appointment> {
+  return apiPost<Appointment>("/api/appointments", {
+    patientId: Number(payload.patientId),
+    date: payload.date,
+    time: payload.time,
+    complaint: payload.complaint,
+  });
 }

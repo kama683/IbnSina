@@ -1,4 +1,4 @@
-import type { AppointmentStatus } from "@/lib/mock-data";
+import type { AppointmentStatus } from "@/lib/types";
 
 export const calendarStatusStyles: Record<
   AppointmentStatus,
@@ -130,4 +130,18 @@ export function getCurrentWeekIsoRange(baseDate = new Date()): {
   };
 
   return { from: toIso(monday), to: toIso(saturday) };
+}
+
+/** Дата со сдвигом на N недель от текущей (0 = эта неделя). */
+export function getDateForWeekOffset(weekOffset: number): Date {
+  const base = new Date();
+  if (weekOffset !== 0) {
+    base.setDate(base.getDate() + weekOffset * 7);
+  }
+  return base;
+}
+
+/** Подпись для «сегодня» в формате «5 июля 2026». */
+export function formatTodayLabel(baseDate = new Date()): string {
+  return `${baseDate.getDate()} ${MONTHS_GENITIVE[baseDate.getMonth()]} ${baseDate.getFullYear()}`;
 }

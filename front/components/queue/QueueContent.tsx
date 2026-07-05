@@ -8,7 +8,7 @@ import {
   getQueueAppointments,
   updateAppointmentStatus,
 } from "@/lib/api/appointments";
-import type { Appointment } from "@/lib/mock-data";
+import type { Appointment } from "@/lib/types";
 
 type Props = {
   initialAppointments: Appointment[];

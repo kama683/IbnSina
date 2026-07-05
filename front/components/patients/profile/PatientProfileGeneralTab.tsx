@@ -1,6 +1,6 @@
 import { AlertCircle, Droplets } from "lucide-react";
 import DiseaseTag from "@/components/ui/DiseaseTag";
-import type { Patient } from "@/lib/mock-data";
+import type { Patient } from "@/lib/types";
 
 type Props = {
   patient: Patient;

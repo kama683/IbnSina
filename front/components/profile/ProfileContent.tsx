@@ -9,7 +9,7 @@ import ProfileProfessionalCard from "@/components/profile/ProfileProfessionalCar
 import ProfileScheduleCard from "@/components/profile/ProfileScheduleCard";
 import ProfileSummaryCard from "@/components/profile/ProfileSummaryCard";
 import { updateDoctorProfile, type DoctorProfile } from "@/lib/api/doctors";
-import type { WorkDaySchedule } from "@/lib/mock-data";
+import type { WorkDaySchedule } from "@/lib/types";
 
 type Props = {
   profile: DoctorProfile;
@@ -18,6 +18,8 @@ type Props = {
 export default function ProfileContent({ profile }: Props) {
   const router = useRouter();
   const [about, setAbout] = useState(profile.professional.about);
+  const [phone, setPhone] = useState(profile.contacts.phone);
+  const [email, setEmail] = useState(profile.contacts.email);
   const [schedule, setSchedule] = useState<WorkDaySchedule[]>(profile.schedule);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function ProfileContent({ profile }: Props) {
     setError(null);
 
     try {
-      await updateDoctorProfile({ about, schedule });
+      await updateDoctorProfile({ about, phone, email, schedule });
       router.refresh();
     } catch (err) {
       setError(
@@ -38,12 +40,27 @@ export default function ProfileContent({ profile }: Props) {
     }
   }
 
+  function handleCancel() {
+    setAbout(profile.professional.about);
+    setPhone(profile.contacts.phone);
+    setEmail(profile.contacts.email);
+    setSchedule(profile.schedule);
+    setError(null);
+    router.refresh();
+  }
+
   return (
     <>
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[320px_1fr]">
         <div className="space-y-5">
           <ProfileSummaryCard profile={profile} />
-          <ProfileContactsCard contacts={profile.contacts} />
+          <ProfileContactsCard
+            phone={phone}
+            email={email}
+            workplace={profile.contacts.workplace}
+            onPhoneChange={setPhone}
+            onEmailChange={setEmail}
+          />
           <ProfileMetricsCard metrics={profile.metrics} />
         </div>
 
@@ -69,7 +86,7 @@ export default function ProfileContent({ profile }: Props) {
         <button
           type="button"
           disabled={saving}
-          onClick={() => router.refresh()}
+          onClick={handleCancel}
           className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
         >
           Отменить

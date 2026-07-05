@@ -1,4 +1,5 @@
 from app.models.doctor import Doctor
+from app.models.doctor_education import DoctorEducation
 from app.models.patient import Patient
 from app.models.patient_diseases import DiseaseTagVariant, PatientDisease
 from app.models.patient_allergies import PatientAllergy
@@ -13,6 +14,7 @@ from app.models.user import User, UserRole
 
 __all__ = [
     "Doctor",
+    "DoctorEducation",
     "Patient",
     "PatientDisease",
     "DiseaseTagVariant",

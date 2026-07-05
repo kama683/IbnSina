@@ -2,8 +2,21 @@ import Link from "next/link";
 import PatientsContent from "@/components/patients/PatientsContent";
 import { getPatients } from "@/lib/api/patients";
 
-export default async function PatientsPage() {
-  const patients = await getPatients();
+type Props = {
+  searchParams: Promise<{
+    page?: string;
+    search?: string;
+    area?: string;
+  }>;
+};
+
+export default async function PatientsPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const page = Number.parseInt(params.page ?? "1", 10) || 1;
+  const search = params.search ?? "";
+  const area = params.area ?? "all";
+
+  const data = await getPatients({ page, limit: 8, search, area });
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
@@ -20,7 +33,12 @@ export default async function PatientsPage() {
         </h1>
       </div>
 
-      <PatientsContent patients={patients} />
+      <PatientsContent
+        data={data}
+        search={search}
+        area={area}
+        page={page}
+      />
     </div>
   );
 }

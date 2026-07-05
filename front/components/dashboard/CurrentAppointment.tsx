@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Clock, ChevronRight } from "lucide-react";
-import type { Appointment } from "@/lib/mock-data";
+import type { Appointment } from "@/lib/types";
 
 type Props = {
   appointment: Appointment;

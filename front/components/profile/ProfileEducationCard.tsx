@@ -1,5 +1,5 @@
 import { GraduationCap } from "lucide-react";
-import type { EducationEntry } from "@/lib/mock-data";
+import type { EducationEntry } from "@/lib/types";
 
 type Props = {
   education: EducationEntry[];

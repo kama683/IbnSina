@@ -1,12 +1,10 @@
-import { weekStats as weekStatsData } from "@/lib/mock-data";
-
-type Stats = typeof weekStatsData;
+import type { WeekStats as WeekStatsData } from "@/lib/api/appointments";
 
 type Props = {
-  stats: Stats;
+  stats: WeekStatsData;
 };
 
-const rows: { key: keyof Omit<Stats, "period">; label: string }[] = [
+const rows: { key: keyof Omit<WeekStatsData, "period">; label: string }[] = [
   { key: "total", label: "Всего приёмов" },
   { key: "completed", label: "Завершённых" },
   { key: "cancelled", label: "Отменённых" },

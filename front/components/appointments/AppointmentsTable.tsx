@@ -1,5 +1,5 @@
 import StatusBadge from "@/components/ui/StatusBadge";
-import type { Appointment } from "@/lib/mock-data";
+import type { Appointment } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 
 type Props = {

@@ -1,14 +1,50 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.appointment import Appointment, AppointmentStatus
+from app.models.patient import Patient
 from app.models.prescription import Prescription
-from app.schemas.appointment import AppointmentUpdateIn
+from app.schemas.appointment import AppointmentCreateIn, AppointmentUpdateIn
 
 router = APIRouter()
+
+MONTHS_GENITIVE = [
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+]
+
+
+def _week_bounds(base: date | None = None) -> tuple[date, date]:
+    today = base or date.today()
+    week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=5)
+    return week_start, week_end
+
+
+def _format_week_period(week_start: date, week_end: date) -> str:
+    if week_start.month == week_end.month:
+        return (
+            f"{week_start.day}–{week_end.day} "
+            f"{MONTHS_GENITIVE[week_start.month - 1]} {week_start.year}"
+        )
+    return (
+        f"{week_start.day} {MONTHS_GENITIVE[week_start.month - 1]} – "
+        f"{week_end.day} {MONTHS_GENITIVE[week_end.month - 1]} {week_end.year}"
+    )
 
 
 def _serialize_appointment(appointment: Appointment) -> dict:
@@ -50,11 +86,73 @@ def list_appointments(
 
 @router.get("/week")
 def get_week_appointments(db: Session = Depends(get_db)):
-    today = date.today()
-    week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=5)
+    week_start, week_end = _week_bounds()
     rows = _query_appointments(db, week_start, week_end)
     return [_serialize_appointment(row) for row in rows]
+
+
+@router.get("/stats/week")
+def get_week_stats(db: Session = Depends(get_db)):
+    week_start, week_end = _week_bounds()
+
+    week_appointments = _query_appointments(db, week_start, week_end)
+    total = len(week_appointments)
+    completed = sum(
+        1 for row in week_appointments if row.status == AppointmentStatus.completed
+    )
+    cancelled = sum(
+        1 for row in week_appointments if row.status == AppointmentStatus.cancelled
+    )
+
+    first_visit_subq = (
+        db.query(
+            Appointment.patient_id.label("patient_id"),
+            func.min(Appointment.date).label("first_date"),
+        )
+        .group_by(Appointment.patient_id)
+        .subquery()
+    )
+    new_patients = (
+        db.query(first_visit_subq.c.patient_id)
+        .filter(
+            first_visit_subq.c.first_date >= week_start,
+            first_visit_subq.c.first_date <= week_end,
+        )
+        .count()
+    )
+
+    dispensary = (
+        db.query(Appointment)
+        .join(Patient, Appointment.patient_id == Patient.id)
+        .filter(
+            Appointment.date >= week_start,
+            Appointment.date <= week_end,
+            Patient.dispensary.is_(True),
+            Appointment.status != AppointmentStatus.cancelled,
+        )
+        .count()
+    )
+
+    completed_durations = [
+        row.duration_minutes
+        for row in week_appointments
+        if row.status == AppointmentStatus.completed and row.duration_minutes
+    ]
+    avg_minutes = (
+        round(sum(completed_durations) / len(completed_durations))
+        if completed_durations
+        else 0
+    )
+
+    return {
+        "period": _format_week_period(week_start, week_end),
+        "total": total,
+        "completed": completed,
+        "cancelled": cancelled,
+        "newPatients": new_patients,
+        "dispensary": dispensary,
+        "avgMinutes": avg_minutes,
+    }
 
 
 @router.get("/queue")
@@ -114,6 +212,56 @@ def get_current_appointment(db: Session = Depends(get_db)):
     return _serialize_appointment(row)
 
 
+@router.post("")
+def create_appointment(
+    payload: AppointmentCreateIn,
+    db: Session = Depends(get_db),
+):
+    from app.models.doctor import Doctor
+
+    doctor = db.query(Doctor).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Врач не найден")
+
+    patient = db.query(Patient).filter(Patient.id == payload.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Пациент не найден")
+
+    conflict = (
+        db.query(Appointment)
+        .filter(
+            Appointment.doctor_id == doctor.id,
+            Appointment.date == payload.date,
+            Appointment.time == payload.time,
+        )
+        .first()
+    )
+    if conflict:
+        raise HTTPException(status_code=409, detail="На это время уже есть приём")
+
+    appointment = Appointment(
+        date=payload.date,
+        time=payload.time,
+        complaint=payload.complaint,
+        status=AppointmentStatus.scheduled,
+        patient_id=payload.patient_id,
+        doctor_id=doctor.id,
+    )
+    db.add(appointment)
+    db.commit()
+
+    appointment = (
+        db.query(Appointment)
+        .options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor),
+        )
+        .filter(Appointment.id == appointment.id)
+        .first()
+    )
+    return _serialize_appointment(appointment)
+
+
 def _sync_prescriptions(
     db: Session,
     appointment: Appointment,
@@ -169,49 +317,32 @@ def update_appointment(
         _sync_prescriptions(db, appointment, payload.prescriptions)
 
     if payload.status is not None:
+        if payload.status == AppointmentStatus.in_progress:
+            db.query(Appointment).filter(
+                Appointment.doctor_id == appointment.doctor_id,
+                Appointment.date == appointment.date,
+                Appointment.status == AppointmentStatus.in_progress,
+                Appointment.id != appointment.id,
+            ).update(
+                {Appointment.status: AppointmentStatus.scheduled},
+                synchronize_session=False,
+            )
         appointment.status = payload.status
+        if payload.status == AppointmentStatus.completed and appointment.duration_minutes is None:
+            appointment.duration_minutes = payload.duration_minutes or 18
+
+    if payload.duration_minutes is not None:
+        appointment.duration_minutes = payload.duration_minutes
 
     db.commit()
 
     appointment = (
         db.query(Appointment)
-        .options(joinedload(Appointment.prescriptions))
+        .options(
+            joinedload(Appointment.patient),
+            joinedload(Appointment.doctor),
+        )
         .filter(Appointment.id == appointment_id)
         .first()
     )
-    return _serialize_examination(appointment)
-
-
-def _serialize_examination(appointment: Appointment) -> dict:
-    diagnoses = []
-    if appointment.diagnosis_code:
-        diagnoses.append(
-            {
-                "code": appointment.diagnosis_code,
-                "name": appointment.diagnosis_name or "",
-            }
-        )
-
-    prescriptions = [
-        {
-            "id": str(prescription.id),
-            "medication": prescription.medication,
-            "dosage": prescription.dosage,
-            "duration": prescription.frequency,
-        }
-        for prescription in appointment.prescriptions
-    ]
-    if not prescriptions:
-        prescriptions = [
-            {"id": "new", "medication": "", "dosage": "", "duration": ""}
-        ]
-
-    return {
-        "patientId": str(appointment.patient_id),
-        "appointmentId": str(appointment.id),
-        "status": appointment.status.value,
-        "complaints": appointment.complaint,
-        "objectiveStatus": appointment.objective_status or "",
-        "diagnoses": diagnoses,
-        "prescriptions": prescriptions,
-    }
+    return _serialize_appointment(appointment)

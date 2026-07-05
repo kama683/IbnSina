@@ -1,72 +1,84 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { Patient } from "@/lib/mock-data";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import PatientsTable from "@/components/patients/PatientsTable";
 import PatientsToolbar from "@/components/patients/PatientsToolbar";
+import type { PatientsPage } from "@/lib/api/patients";
 
 const PAGE_SIZE = 8;
 
 type Props = {
-  patients: Patient[];
+  data: PatientsPage;
+  search: string;
+  area: string;
+  page: number;
 };
 
-export default function PatientsContent({ patients }: Props) {
-  const [search, setSearch] = useState("");
-  const [area, setArea] = useState("all");
-  const [page, setPage] = useState(1);
+function buildPatientsUrl(next: {
+  page?: number;
+  search?: string;
+  area?: string;
+}) {
+  const params = new URLSearchParams();
+  const page = next.page ?? 1;
+  const search = next.search ?? "";
+  const area = next.area ?? "all";
 
-  const areas = useMemo(
-    () => [...new Set(patients.map((p) => p.area))].sort(),
-    [patients],
-  );
+  if (page > 1) params.set("page", String(page));
+  if (search) params.set("search", search);
+  if (area !== "all") params.set("area", area);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return patients.filter((patient) => {
-      const matchesArea = area === "all" || patient.area === area;
-      const matchesSearch =
-        query === "" ||
-        patient.fullName.toLowerCase().includes(query) ||
-        patient.iin.includes(query.replace(/\s/g, ""));
-      return matchesArea && matchesSearch;
-    });
-  }, [patients, search, area]);
+  const query = params.toString();
+  return query ? `/patients?${query}` : "/patients";
+}
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
+export default function PatientsContent({
+  data,
+  search,
+  area,
+  page,
+}: Props) {
+  const router = useRouter();
+  const [localSearch, setLocalSearch] = useState(search);
 
-  const paginated = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, currentPage]);
+  function navigate(next: { page?: number; search?: string; area?: string }) {
+    router.push(
+      buildPatientsUrl({
+        page: next.page ?? page,
+        search: next.search ?? search,
+        area: next.area ?? area,
+      }),
+    );
+  }
 
   function handleSearchChange(value: string) {
-    setSearch(value);
-    setPage(1);
+    setLocalSearch(value);
+    navigate({ search: value, page: 1 });
   }
 
   function handleAreaChange(value: string) {
-    setArea(value);
-    setPage(1);
+    navigate({ area: value, page: 1 });
   }
 
   return (
     <>
       <PatientsToolbar
-        search={search}
+        search={localSearch}
         onSearchChange={handleSearchChange}
         area={area}
         onAreaChange={handleAreaChange}
-        areas={areas}
+        areas={data.areas}
+        defaultArea={data.areas[0] ?? "Участок №3"}
+        onPatientCreated={() => router.refresh()}
       />
 
       <PatientsTable
-        patients={paginated}
-        total={filtered.length}
-        page={currentPage}
+        patients={data.items}
+        total={data.total}
+        page={page}
         pageSize={PAGE_SIZE}
-        onPageChange={setPage}
+        onPageChange={(nextPage) => navigate({ page: nextPage })}
       />
     </>
   );

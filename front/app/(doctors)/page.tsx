@@ -6,15 +6,25 @@ import { getCurrentDoctor } from "@/lib/api/doctors";
 import {
   getCurrentAppointment,
   getTodayAppointments,
+  getWeekStats,
 } from "@/lib/api/appointments";
-import { weekStats } from "@/lib/mock-data";
+import { formatTodayLabel } from "@/lib/calendar-utils";
 
 export default async function DashboardPage() {
-  const [doctor, currentAppointment, todayAppointments] = await Promise.all([
-    getCurrentDoctor(),
-    getCurrentAppointment(),
-    getTodayAppointments(),
-  ]);
+  const [doctor, currentAppointment, todayAppointments, weekStats] =
+    await Promise.all([
+      getCurrentDoctor(),
+      getCurrentAppointment(),
+      getTodayAppointments(),
+      getWeekStats(),
+    ]);
+
+  const todaySubtitle = [
+    formatTodayLabel(),
+    doctor.office ? doctor.office : null,
+  ]
+    .filter(Boolean)
+    .join(" — ");
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
@@ -30,7 +40,10 @@ export default async function DashboardPage() {
           {currentAppointment && (
             <CurrentAppointment appointment={currentAppointment} />
           )}
-          <TodayAppointments appointments={todayAppointments} />
+          <TodayAppointments
+            appointments={todayAppointments}
+            subtitle={todaySubtitle}
+          />
         </div>
 
         <div className="space-y-5">

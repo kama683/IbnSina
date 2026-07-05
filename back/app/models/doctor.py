@@ -24,6 +24,8 @@ class Doctor(Base):
     qualification_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
     license_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     license_valid_until: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    certificate_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    certificate_valid_until: Mapped[str | None] = mapped_column(String(20), nullable=True)
     about: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     experience_years: Mapped[int | None] = mapped_column(nullable=True)
 
@@ -34,3 +36,9 @@ class Doctor(Base):
     appointments = relationship("Appointment", back_populates="doctor")
     hospitalizations = relationship("Hospitalization", back_populates="doctor")
     schedules = relationship("Schedule", back_populates="doctor", cascade="all, delete-orphan")
+    education_entries = relationship(
+        "DoctorEducation",
+        back_populates="doctor",
+        cascade="all, delete-orphan",
+        order_by="DoctorEducation.year",
+    )

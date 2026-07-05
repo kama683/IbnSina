@@ -97,3 +97,31 @@ export async function apiPatch<T>(
 
   return response.json() as Promise<T>;
 }
+
+/**
+ * POST-запрос к API (создание записей).
+ */
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  init?: RequestInit,
+): Promise<T> {
+  const url = `${API_URL}${path}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+    body: JSON.stringify(body),
+    ...init,
+  });
+
+  if (!response.ok) {
+    await parseApiError(response);
+  }
+
+  return response.json() as Promise<T>;
+}

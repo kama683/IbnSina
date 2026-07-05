@@ -3,7 +3,7 @@ import type {
   DoctorBadge,
   EducationEntry,
   WorkDaySchedule,
-} from "@/lib/mock-data";
+} from "@/lib/types";
 
 export interface Doctor {
   id: number;
@@ -13,6 +13,7 @@ export interface Doctor {
   initials: string;
   role: string;
   area: string;
+  office: string;
 }
 
 export interface DoctorProfile extends Doctor {

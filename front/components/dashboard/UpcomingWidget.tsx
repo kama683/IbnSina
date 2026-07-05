@@ -1,4 +1,4 @@
-import type { Appointment } from "@/lib/mock-data";
+import type { Appointment } from "@/lib/types";
 
 type Props = {
   appointments: Appointment[];

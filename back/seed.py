@@ -1,4 +1,4 @@
-"""Заполняет БД тестовыми данными из front/lib/mock-data.ts."""
+"""Заполняет БД тестовыми данными (источник — seed-константы ниже)."""
 
 from datetime import date
 
@@ -11,7 +11,31 @@ from app.models.hospitalization import Hospitalization
 from app.models.schedule import Schedule
 from app.models.health_metric import HealthMetric
 from app.models.department import Department
+from app.models.doctor_education import DoctorEducation
 from app.models.user import User, UserRole
+
+EDUCATION_DATA = [
+    {
+        "year": "2008",
+        "title": "АО «Медицинский университет Астана»",
+        "description": "Специальность: Общая медицина, диплом с отличием",
+    },
+    {
+        "year": "2010",
+        "title": "Клиническая ординатура — Эндокринология",
+        "description": "НАО «Казахский национальный медицинский университет»",
+    },
+    {
+        "year": "2018",
+        "title": "Повышение квалификации — Диабетология",
+        "description": "Удостоверение КМО, 144 часа",
+    },
+    {
+        "year": "2023",
+        "title": "Повышение квалификации — Цифровое здравоохранение",
+        "description": "Дистанционный курс, 72 часа",
+    },
+]
 
 DOCTOR_DATA = {
     "full_name": "Шарипов Муслим Юнусалиевич",
@@ -34,6 +58,8 @@ DOCTOR_PROFILE_EXTRA = {
     "qualification_category": "Высшая",
     "license_number": "0023847-МД",
     "license_valid_until": "31.12.2027",
+    "certificate_number": "№ СС-2022-00418",
+    "certificate_valid_until": "15.09.2027",
     "about": (
         "Врач-эндокринолог с 14-летним стажем. Специализируюсь на диагностике "
         "и лечении сахарного диабета, заболеваний щитовидной железы и "
@@ -138,6 +164,7 @@ APPOINTMENTS_DATA = [
         "diagnosis_code": "J02.9",
         "diagnosis_name": "Острый фарингит",
         "objective_status": None,
+        "duration_minutes": 20,
     },
     {
         "time": "09:00",
@@ -314,7 +341,7 @@ def _get_or_create_patient(db, short_name: str) -> Patient:
     fields = PATIENTS_DATA[short_name]
 
     if patient is None:
-        patient = Patient(**fields)
+        patient = Patient(area=DOCTOR_DATA["area"], **fields)
         db.add(patient)
         db.flush()
         return patient
@@ -343,6 +370,7 @@ def _get_or_create_appointment(db, doctor, patient, today: date, item: dict) -> 
         "diagnosis_code": item["diagnosis_code"],
         "diagnosis_name": item["diagnosis_name"],
         "objective_status": item["objective_status"],
+        "duration_minutes": item.get("duration_minutes"),
     }
 
     if appointment is None:
@@ -403,6 +431,13 @@ def _sync_vaccinations(db, patient: Patient) -> None:
     for item in items:
         db.add(Vaccination(patient_id=patient.id, **item))
 
+def _sync_education(db, doctor) -> None:
+    db.query(DoctorEducation).filter(DoctorEducation.doctor_id == doctor.id).delete()
+    db.flush()
+    for item in EDUCATION_DATA:
+        db.add(DoctorEducation(doctor_id=doctor.id, **item))
+
+
 def _sync_schedules(db, doctor) -> None:
     for row in list(doctor.schedules):
         db.delete(row)
@@ -460,6 +495,7 @@ def seed() -> None:
         doctor = _get_or_create_doctor(db, department)
         _sync_user(db, doctor)
         _sync_schedules(db, doctor)
+        _sync_education(db, doctor)
 
         patients_by_name: dict[str, Patient] = {}
         today = date.today()

@@ -7,7 +7,7 @@ import type {
   Patient,
   PatientExamination,
   PatientVisitHistory,
-} from "@/lib/mock-data";
+} from "@/lib/types";
 
 type Props = {
   patient: Patient;

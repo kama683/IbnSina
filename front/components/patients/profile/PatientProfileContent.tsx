@@ -6,7 +6,7 @@ import type {
   Patient,
   PatientMedicalHistoryEntry,
   Vaccination,
-} from "@/lib/mock-data";
+} from "@/lib/types";
 import PatientProfileGeneralTab from "@/components/patients/profile/PatientProfileGeneralTab";
 import PatientProfileHealthPassportTab from "@/components/patients/profile/PatientProfileHealthPassportTab";
 import PatientProfileHistoryTab from "@/components/patients/profile/PatientProfileHistoryTab";

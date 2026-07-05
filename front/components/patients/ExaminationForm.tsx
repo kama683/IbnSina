@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, X } from "lucide-react";
 import { updateExamination } from "@/lib/api/examinations";
+import { searchIcd10 } from "@/lib/api/icd10";
 import type {
   Diagnosis,
   PatientExamination,
   Prescription,
-} from "@/lib/mock-data";
+} from "@/lib/types";
 
 type Props = {
   examination: PatientExamination;
@@ -38,12 +39,40 @@ export default function ExaminationForm({ examination }: Props) {
       : [createPrescription()],
   );
   const [diagnosisQuery, setDiagnosisQuery] = useState("");
+  const [icdSuggestions, setIcdSuggestions] = useState<Diagnosis[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function removeDiagnosis(code: string) {
     setDiagnoses((items) => items.filter((item) => item.code !== code));
   }
+
+  function addDiagnosis(diagnosis: Diagnosis) {
+    setDiagnoses((items) => {
+      if (items.some((item) => item.code === diagnosis.code)) {
+        return items;
+      }
+      return [...items, diagnosis];
+    });
+    setDiagnosisQuery("");
+    setIcdSuggestions([]);
+  }
+
+  useEffect(() => {
+    const query = diagnosisQuery.trim();
+    if (query.length < 2) {
+      setIcdSuggestions([]);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      searchIcd10(query)
+        .then(setIcdSuggestions)
+        .catch(() => setIcdSuggestions([]));
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [diagnosisQuery]);
 
   function addPrescription() {
     setPrescriptions((items) => [...items, createPrescription()]);
@@ -131,6 +160,23 @@ export default function ExaminationForm({ examination }: Props) {
               className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 focus:border-[#1a5c3a]/30 focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/10"
             />
           </div>
+
+          {icdSuggestions.length > 0 && (
+            <ul className="mt-2 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              {icdSuggestions.map((item) => (
+                <li key={item.code}>
+                  <button
+                    type="button"
+                    onClick={() => addDiagnosis(item)}
+                    className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                  >
+                    <span className="font-medium text-[#1a5c3a]">{item.code}</span>
+                    <span className="text-gray-700">{item.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {diagnoses.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">

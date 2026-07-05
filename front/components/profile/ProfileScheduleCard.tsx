@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import type { WorkDaySchedule } from "@/lib/mock-data";
+import type { WorkDaySchedule } from "@/lib/types";
 
 type Props = {
   schedule: WorkDaySchedule[];

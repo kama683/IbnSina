@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BedDouble, CalendarPlus, User } from "lucide-react";
-import type { Patient } from "@/lib/mock-data";
+import type { Patient } from "@/lib/types";
 
 type Props = {
   patient: Patient;
