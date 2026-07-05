@@ -30,18 +30,6 @@ export const calendarStatusStyles: Record<
   },
 };
 
-export const CALENDAR_WEEK = {
-  period: "22–28 мая 2026",
-  days: [
-    { key: "mon", label: "Пн", date: "25.05.2026", title: "25 мая" },
-    { key: "tue", label: "Вт", date: "26.05.2026", title: "26 мая" },
-    { key: "wed", label: "Ср", date: "27.05.2026", title: "27 мая" },
-    { key: "thu", label: "Чт", date: "28.05.2026", title: "28 мая" },
-    { key: "fri", label: "Пт", date: "29.05.2026", title: "29 мая" },
-    { key: "sat", label: "Сб", date: "30.05.2026", title: "30 мая" },
-  ],
-} as const;
-
 export const TIME_SLOTS = [
   "08:00",
   "08:30",
@@ -55,3 +43,91 @@ export const TIME_SLOTS = [
   "12:30",
   "13:00",
 ] as const;
+
+export type CalendarWeekDay = {
+  key: string;
+  label: string;
+  date: string;
+  title: string;
+};
+
+export type CalendarWeek = {
+  period: string;
+  days: CalendarWeekDay[];
+};
+
+const WEEKDAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб"] as const;
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+const MONTHS_GENITIVE = [
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
+] as const;
+
+function formatApiDate(value: Date): string {
+  const day = String(value.getDate()).padStart(2, "0");
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  return `${day}.${month}.${value.getFullYear()}`;
+}
+
+/** Текущая рабочая неделя (пн–сб) для заголовка календаря и сопоставления с API. */
+export function buildCalendarWeek(baseDate = new Date()): CalendarWeek {
+  const monday = new Date(baseDate);
+  const weekday = monday.getDay();
+  const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+  monday.setDate(monday.getDate() - daysFromMonday);
+
+  const days: CalendarWeekDay[] = [];
+  for (let i = 0; i < 6; i += 1) {
+    const current = new Date(monday);
+    current.setDate(monday.getDate() + i);
+    days.push({
+      key: WEEKDAY_KEYS[i],
+      label: WEEKDAY_LABELS[i],
+      date: formatApiDate(current),
+      title: `${current.getDate()} ${MONTHS_GENITIVE[current.getMonth()]}`,
+    });
+  }
+
+  const saturday = new Date(monday);
+  saturday.setDate(monday.getDate() + 5);
+  const year = monday.getFullYear();
+
+  return {
+    period: `${monday.getDate()}–${saturday.getDate()} ${MONTHS_GENITIVE[monday.getMonth()]} ${year}`,
+    days,
+  };
+}
+
+/** ISO-даты пн и сб текущей недели для запроса GET /api/appointments?from=&to= */
+export function getCurrentWeekIsoRange(baseDate = new Date()): {
+  from: string;
+  to: string;
+} {
+  const monday = new Date(baseDate);
+  const weekday = monday.getDay();
+  const daysFromMonday = weekday === 0 ? 6 : weekday - 1;
+  monday.setDate(monday.getDate() - daysFromMonday);
+
+  const saturday = new Date(monday);
+  saturday.setDate(monday.getDate() + 5);
+
+  const toIso = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  return { from: toIso(monday), to: toIso(saturday) };
+}

@@ -12,20 +12,24 @@ import {
   LogOut,
   UserRound,
 } from "lucide-react";
-import { doctor } from "@/lib/mock-data";
+import type { Doctor } from "@/lib/api/doctors";
 
-export default function Sidebar() {
+type SidebarProps = {
+  doctor: Doctor;
+};
+
+export default function Sidebar({ doctor }: SidebarProps) {
   const pathname = usePathname();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex">
-      {/* Логотип MedIS + иконка пульса */}
+      {/* Логотип IbnSina + иконка пульса */}
       <div className="flex h-14 items-center gap-2.5 px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a5c3a]">
           <Activity className="h-4 w-4 text-white" strokeWidth={2.5} />
         </div>
         <span className="text-lg font-bold tracking-tight text-gray-900">
-          MedIS
+          IbnSina
         </span>
       </div>
 
@@ -74,7 +78,7 @@ export default function Sidebar() {
         </NavGroup>
       </nav>
 
-      {/* Профиль врача внизу */}
+      {/* Профиль врача внизу — данные приходят с сервера через layout */}
       <div className="border-t border-gray-200/80 p-4">
         <p className="text-sm font-medium text-gray-900">{doctor.fullName}</p>
         <p className="mt-0.5 text-xs text-gray-500">

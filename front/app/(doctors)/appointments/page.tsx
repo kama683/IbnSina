@@ -1,8 +1,21 @@
 import Link from "next/link";
 import AppointmentsContent from "@/components/appointments/AppointmentsContent";
-import { todayAppointments, weekAppointments } from "@/lib/mock-data";
+import {
+  getTodayAppointments,
+  getWeekAppointments,
+} from "@/lib/api/appointments";
+import { getCurrentDoctor } from "@/lib/api/doctors";
+import { buildCalendarWeek } from "@/lib/calendar-utils";
 
-export default function AppointmentsPage() {
+export default async function AppointmentsPage() {
+  const [listAppointments, calendarAppointments, doctor] = await Promise.all([
+    getTodayAppointments(),
+    getWeekAppointments(),
+    getCurrentDoctor(),
+  ]);
+
+  const calendarWeek = buildCalendarWeek();
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
       <div>
@@ -19,8 +32,10 @@ export default function AppointmentsPage() {
       </div>
 
       <AppointmentsContent
-        listAppointments={todayAppointments}
-        calendarAppointments={weekAppointments}
+        listAppointments={listAppointments}
+        calendarAppointments={calendarAppointments}
+        calendarWeek={calendarWeek}
+        doctorShortName={doctor.shortName}
       />
     </div>
   );

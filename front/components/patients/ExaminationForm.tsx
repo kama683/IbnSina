@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Search, X } from "lucide-react";
+import { updateExamination } from "@/lib/api/examinations";
 import type {
   Diagnosis,
   PatientExamination,
@@ -22,6 +24,7 @@ function createPrescription(): Prescription {
 }
 
 export default function ExaminationForm({ examination }: Props) {
+  const router = useRouter();
   const [complaints, setComplaints] = useState(examination.complaints);
   const [objectiveStatus, setObjectiveStatus] = useState(
     examination.objectiveStatus,
@@ -35,6 +38,8 @@ export default function ExaminationForm({ examination }: Props) {
       : [createPrescription()],
   );
   const [diagnosisQuery, setDiagnosisQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function removeDiagnosis(code: string) {
     setDiagnoses((items) => items.filter((item) => item.code !== code));
@@ -60,6 +65,33 @@ export default function ExaminationForm({ examination }: Props) {
         item.id === id ? { ...item, [field]: value } : item,
       ),
     );
+  }
+
+  async function handleSave(status: "in_progress" | "completed") {
+    if (!examination.appointmentId) {
+      setError("Не найден активный приём для сохранения");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await updateExamination(examination.appointmentId, {
+        complaints,
+        objectiveStatus,
+        diagnoses,
+        prescriptions,
+        status,
+      });
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Не удалось сохранить осмотр",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -193,18 +225,28 @@ export default function ExaminationForm({ examination }: Props) {
             ))}
           </div>
         </div>
+
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-gray-100 px-5 py-4">
         <button
           type="button"
-          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          disabled={saving}
+          onClick={() => handleSave("in_progress")}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
         >
           Сохранить черновик
         </button>
         <button
           type="button"
-          className="rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
+          disabled={saving}
+          onClick={() => handleSave("completed")}
+          className="rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14472e] disabled:opacity-50"
         >
           Завершить приём
         </button>

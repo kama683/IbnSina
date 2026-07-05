@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import PatientProfileView from "@/components/patients/profile/PatientProfileView";
+import { ApiError } from "@/lib/api/api";
 import {
-  getPatientById,
+  getPatient,
   getPatientHealthMetrics,
-  getPatientMedicalHistory,
+  getPatientHistory,
   getPatientVaccinations,
-} from "@/lib/mock-data";
+} from "@/lib/api/patients";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -13,18 +14,27 @@ type Props = {
 
 export default async function PatientPage({ params }: Props) {
   const { id } = await params;
-  const patient = getPatientById(id);
 
-  if (!patient) {
-    notFound();
+  try {
+    const [patient, history, healthMetrics, vaccinations] = await Promise.all([
+      getPatient(id),
+      getPatientHistory(id),
+      getPatientHealthMetrics(id),
+      getPatientVaccinations(id),
+    ]);
+
+    return (
+      <PatientProfileView
+        patient={patient}
+        history={history}
+        healthMetrics={healthMetrics}
+        vaccinations={vaccinations}
+      />
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+    throw error;
   }
-
-  return (
-    <PatientProfileView
-      patient={patient}
-      history={getPatientMedicalHistory(id)}
-      healthMetrics={getPatientHealthMetrics(id)}
-      vaccinations={getPatientVaccinations(id)}
-    />
-  );
 }

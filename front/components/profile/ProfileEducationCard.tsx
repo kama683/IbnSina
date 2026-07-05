@@ -1,7 +1,11 @@
 import { GraduationCap } from "lucide-react";
-import { doctorProfile } from "@/lib/mock-data";
+import type { EducationEntry } from "@/lib/mock-data";
 
-export default function ProfileEducationCard() {
+type Props = {
+  education: EducationEntry[];
+};
+
+export default function ProfileEducationCard({ education }: Props) {
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-3">
@@ -13,9 +17,9 @@ export default function ProfileEducationCard() {
 
       <div className="px-5 py-5">
         <ol className="space-y-6">
-          {doctorProfile.education.map((entry, index) => (
+          {education.map((entry, index) => (
             <li key={entry.year} className="relative flex gap-4">
-              {index < doctorProfile.education.length - 1 && (
+              {index < education.length - 1 && (
                 <span className="absolute left-[5px] top-3 h-[calc(100%+12px)] w-px bg-gray-200" />
               )}
 

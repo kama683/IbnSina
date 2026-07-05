@@ -1,6 +1,10 @@
 import Link from "next/link";
+import QueueContent from "@/components/queue/QueueContent";
+import { getQueueAppointments } from "@/lib/api/appointments";
 
-export default function QueuePage() {
+export default async function QueuePage() {
+  const appointments = await getQueueAppointments();
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
       <div>
@@ -16,9 +20,7 @@ export default function QueuePage() {
         </h1>
       </div>
 
-      <section className="rounded-xl border border-gray-200/80 bg-white px-5 py-10 text-center shadow-sm">
-        <p className="text-sm text-gray-500">Раздел в разработке</p>
-      </section>
+      <QueueContent initialAppointments={appointments} />
     </div>
   );
 }

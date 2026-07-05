@@ -4,10 +4,11 @@ import type { Appointment } from "@/lib/mock-data";
 
 type Props = {
   appointment: Appointment;
-  patientId?: string;
 };
 
-export default function CurrentAppointment({ appointment, patientId = "1" }: Props) {
+export default function CurrentAppointment({ appointment }: Props) {
+  const patientId = appointment.patientId ?? "1";
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="flex items-center justify-between gap-4 border-l-4 border-amber-400 px-5 py-4">

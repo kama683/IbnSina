@@ -1,8 +1,10 @@
 import Link from "next/link";
 import PatientsContent from "@/components/patients/PatientsContent";
-import { patients } from "@/lib/mock-data";
+import { getPatients } from "@/lib/api/patients";
 
-export default function PatientsPage() {
+export default async function PatientsPage() {
+  const patients = await getPatients();
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
       <div>

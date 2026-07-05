@@ -1,30 +1,26 @@
-"use client";
-
-import { useState } from "react";
 import { Clock } from "lucide-react";
 import type { WorkDaySchedule } from "@/lib/mock-data";
-import { doctorProfile } from "@/lib/mock-data";
 
-export default function ProfileScheduleCard() {
-  const [schedule, setSchedule] = useState<WorkDaySchedule[]>(
-    doctorProfile.schedule,
-  );
+type Props = {
+  schedule: WorkDaySchedule[];
+  onScheduleChange: (schedule: WorkDaySchedule[]) => void;
+};
 
+export default function ProfileScheduleCard({
+  schedule,
+  onScheduleChange,
+}: Props) {
   function toggleDay(id: string) {
-    setSchedule((days) =>
-      days.map((day) =>
+    onScheduleChange(
+      schedule.map((day) =>
         day.id === id ? { ...day, enabled: !day.enabled } : day,
       ),
     );
   }
 
-  function updateTime(
-    id: string,
-    field: "start" | "end",
-    value: string,
-  ) {
-    setSchedule((days) =>
-      days.map((day) => (day.id === id ? { ...day, [field]: value } : day)),
+  function updateTime(id: string, field: "start" | "end", value: string) {
+    onScheduleChange(
+      schedule.map((day) => (day.id === id ? { ...day, [field]: value } : day)),
     );
   }
 

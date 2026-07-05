@@ -8,6 +8,7 @@ export type AppointmentStatus =
 // Описываем форму одного приёма — переиспользуем везде
 export interface Appointment {
   id: string;
+  patientId?: string;
   date: string; // "28.05.2026"
   time: string;
   patient: string;
@@ -414,6 +415,7 @@ export interface Prescription {
 
 export interface PatientExamination {
   patientId: string;
+  appointmentId?: string;
   status: AppointmentStatus;
   complaints: string;
   objectiveStatus: string;

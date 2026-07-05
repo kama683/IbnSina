@@ -1,25 +1,17 @@
 import { Mail, MapPin, Pencil, Phone } from "lucide-react";
-import { doctorProfile } from "@/lib/mock-data";
+import type { DoctorProfile } from "@/lib/api/doctors";
 
-const items = [
-  {
-    icon: Phone,
-    value: doctorProfile.contacts.phone,
-    editable: true,
-  },
-  {
-    icon: Mail,
-    value: doctorProfile.contacts.email,
-    editable: true,
-  },
-  {
-    icon: MapPin,
-    value: doctorProfile.contacts.workplace,
-    editable: false,
-  },
-];
+type Props = {
+  contacts: DoctorProfile["contacts"];
+};
 
-export default function ProfileContactsCard() {
+export default function ProfileContactsCard({ contacts }: Props) {
+  const items = [
+    { icon: Phone, value: contacts.phone, editable: true },
+    { icon: Mail, value: contacts.email, editable: true },
+    { icon: MapPin, value: contacts.workplace, editable: false },
+  ];
+
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-5 py-3">

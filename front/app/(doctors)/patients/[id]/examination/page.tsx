@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
 import PatientExaminationView from "@/components/patients/PatientExaminationView";
-import {
-  getPatientById,
-  getPatientExamination,
-  getPatientVisitHistory,
-} from "@/lib/mock-data";
+import { ApiError } from "@/lib/api/api";
+import { getPatient, getPatientExamination, getPatientVisitHistory } from "@/lib/api/patients";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -12,17 +9,25 @@ type Props = {
 
 export default async function PatientExaminationPage({ params }: Props) {
   const { id } = await params;
-  const patient = getPatientById(id);
 
-  if (!patient) {
-    notFound();
+  try {
+    const [patient, examination, history] = await Promise.all([
+      getPatient(id),
+      getPatientExamination(id),
+      getPatientVisitHistory(id),
+    ]);
+
+    return (
+      <PatientExaminationView
+        patient={patient}
+        examination={examination}
+        history={history}
+      />
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      notFound();
+    }
+    throw error;
   }
-
-  return (
-    <PatientExaminationView
-      patient={patient}
-      examination={getPatientExamination(id)}
-      history={getPatientVisitHistory(id)}
-    />
-  );
 }

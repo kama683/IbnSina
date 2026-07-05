@@ -1,7 +1,11 @@
 import { Search, Bell } from "lucide-react";
-import { doctor } from "@/lib/mock-data";
+import type { Doctor } from "@/lib/api/doctors";
 
-export default function Header() {
+type HeaderProps = {
+  doctor: Doctor;
+};
+
+export default function Header({ doctor }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-gray-200/80 bg-white px-6">
       <div className="grid w-full grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4">

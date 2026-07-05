@@ -1,14 +1,15 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Appointment } from "@/lib/mock-data";
-import { doctor } from "@/lib/mock-data";
 import {
-  CALENDAR_WEEK,
   TIME_SLOTS,
   calendarStatusStyles,
+  type CalendarWeek,
 } from "@/lib/calendar-utils";
 
 type Props = {
   appointments: Appointment[];
+  week: CalendarWeek;
+  doctorShortName: string;
 };
 
 function findAppointment(
@@ -19,7 +20,11 @@ function findAppointment(
   return appointments.find((a) => a.date === date && a.time === time);
 }
 
-export default function AppointmentsCalendar({ appointments }: Props) {
+export default function AppointmentsCalendar({
+  appointments,
+  week,
+  doctorShortName,
+}: Props) {
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
@@ -32,7 +37,7 @@ export default function AppointmentsCalendar({ appointments }: Props) {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-sm font-semibold text-gray-900">
-            {CALENDAR_WEEK.period}
+            {week.period}
           </span>
           <button
             type="button"
@@ -43,7 +48,7 @@ export default function AppointmentsCalendar({ appointments }: Props) {
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          {doctor.shortName} — Кабинет 214
+          {doctorShortName} — Кабинет 214
         </p>
       </div>
 
@@ -51,11 +56,11 @@ export default function AppointmentsCalendar({ appointments }: Props) {
         <div
           className="grid min-w-[900px]"
           style={{
-            gridTemplateColumns: `56px repeat(${CALENDAR_WEEK.days.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: `56px repeat(${week.days.length}, minmax(0, 1fr))`,
           }}
         >
           <div className="border-b border-r border-gray-100 bg-gray-50/50" />
-          {CALENDAR_WEEK.days.map((day) => (
+          {week.days.map((day) => (
             <div
               key={day.key}
               className="border-b border-r border-gray-100 bg-gray-50/50 px-2 py-2.5 text-center last:border-r-0"
@@ -74,7 +79,7 @@ export default function AppointmentsCalendar({ appointments }: Props) {
               <div className="flex items-start justify-end border-b border-r border-gray-100 px-2 py-2 text-[11px] tabular-nums text-gray-400">
                 {time}
               </div>
-              {CALENDAR_WEEK.days.map((day) => {
+              {week.days.map((day) => {
                 const appointment = findAppointment(
                   appointments,
                   day.date,
