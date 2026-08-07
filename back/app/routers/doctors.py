@@ -11,13 +11,13 @@
 Обе старые строки при переносе не сохранились как отдельные поля — здесь оба
 ключа отдаются из одного и того же position_title.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_employee as _auth_current_employee
 from app.models.employee import Employee
-from app.routers.employees import _sync_schedules, _with_relations, serialize_doctor_profile
+from app.routers.employees import apply_profile_update, _with_relations, serialize_doctor_profile
 from app.schemas.doctor import DoctorProfileUpdateIn
 
 router = APIRouter()
@@ -67,23 +67,12 @@ def get_doctor_profile(
 @router.patch("/me")
 def update_doctor_profile(
     payload: DoctorProfileUpdateIn,
+    request: Request,
     db: Session = Depends(get_db),
     current_employee: Employee = Depends(_auth_current_employee),
 ):
     employee = _with_relations(db, current_employee.id)
-    if employee.doctor_profile is None:
-        raise HTTPException(status_code=404, detail="Врач не найден")
-
-    if payload.about is not None:
-        employee.doctor_profile.about = payload.about
-    if payload.phone is not None:
-        employee.phone = payload.phone
-    if payload.email is not None:
-        employee.email = payload.email
-    if payload.schedule is not None:
-        _sync_schedules(employee, payload.schedule)
-
-    db.commit()
+    apply_profile_update(db, employee, payload, request)
 
     employee = _with_relations(db, current_employee.id)
     return _serialize_doctor_alias_profile(db, employee)

@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -10,6 +10,7 @@ from app.models.doctor_profile import DoctorProfile
 from app.models.employee import Employee
 from app.models.patient import Patient
 from app.schemas.doctor import DoctorProfileUpdateIn
+from app.services.audit import record_audit
 
 router = APIRouter()
 
@@ -174,13 +175,16 @@ def get_my_employee_profile(
     return serialize_doctor_profile(db, employee)
 
 
-@router.patch("/me")
-def update_my_employee_profile(
+def apply_profile_update(
+    db: Session,
+    employee: Employee,
     payload: DoctorProfileUpdateIn,
-    db: Session = Depends(get_db),
-    current_employee: Employee = Depends(_auth_current_employee),
-):
-    employee = _with_relations(db, current_employee.id)
+    request: Request | None = None,
+) -> None:
+    """Общая логика PATCH /me — используется и канонiчным роутером, и
+    deprecated-алиасом doctors.py, чтобы аудит-запись не задваивалась и не
+    расходилась между двумя копиями. Коммитит сама (audit-запись и мутация
+    должны попасть в одну транзакцию)."""
     if employee.doctor_profile is None:
         raise HTTPException(status_code=404, detail="Профиль врача не найден")
 
@@ -193,7 +197,30 @@ def update_my_employee_profile(
     if payload.schedule is not None:
         _sync_schedules(employee, payload.schedule)
 
+    changes = payload.model_dump(exclude_none=True)
+    if changes:
+        record_audit(
+            db,
+            actor_user_id=employee.user.id if employee.user else None,
+            entity_type="employee",
+            entity_id=employee.id,
+            action="update_profile",
+            changes=changes,
+            request=request,
+        )
+
     db.commit()
+
+
+@router.patch("/me")
+def update_my_employee_profile(
+    payload: DoctorProfileUpdateIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(_auth_current_employee),
+):
+    employee = _with_relations(db, current_employee.id)
+    apply_profile_update(db, employee, payload, request)
 
     employee = _with_relations(db, current_employee.id)
     return serialize_doctor_profile(db, employee)

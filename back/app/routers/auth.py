@@ -10,6 +10,7 @@ from app.deps import get_current_user
 from app.models.employee import Employee, EmployeeStatus
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.services.audit import record_audit
 from app.security import (
     ACCESS_TOKEN_COOKIE_NAME,
     REFRESH_TOKEN_COOKIE_NAME,
@@ -107,6 +108,14 @@ def login(payload: LoginIn, request: Request, response: Response, db: Session = 
 
     access_token = create_access_token(subject=user.email)
     refresh_token = _issue_refresh_token(db, user.id, request)
+    record_audit(
+        db,
+        actor_user_id=user.id,
+        entity_type="user",
+        entity_id=user.id,
+        action="login",
+        request=request,
+    )
     db.commit()
 
     _set_auth_cookies(response, access_token, refresh_token)
@@ -177,6 +186,14 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         )
         if stored is not None and stored.revoked_at is None:
             stored.revoked_at = datetime.now(timezone.utc)
+            record_audit(
+                db,
+                actor_user_id=stored.user_id,
+                entity_type="user",
+                entity_id=stored.user_id,
+                action="logout",
+                request=request,
+            )
             db.commit()
 
     _clear_auth_cookies(response)
@@ -186,6 +203,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 @router.post("/change-password")
 def change_password(
     payload: ChangePasswordIn,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -194,6 +212,14 @@ def change_password(
 
     current_user.password_hash = hash_password(payload.new_password)
     current_user.must_change_password = False
+    record_audit(
+        db,
+        actor_user_id=current_user.id,
+        entity_type="user",
+        entity_id=current_user.id,
+        action="change_password",
+        request=request,
+    )
     db.commit()
     return {"ok": True}
 
