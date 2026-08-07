@@ -1,12 +1,13 @@
 import { Bell } from "lucide-react";
-import type { Doctor } from "@/lib/api/doctors";
+import type { Employee } from "@/lib/api/employees";
+import { ROLE_LABELS } from "@/lib/roles";
 import HeaderSearch from "@/components/layout/HeaderSearch";
 
 type HeaderProps = {
-  doctor: Doctor;
+  employee: Employee;
 };
 
-export default function Header({ doctor }: HeaderProps) {
+export default function Header({ employee }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-gray-200/80 bg-white px-6">
       <div className="grid w-full grid-cols-[1fr_minmax(0,28rem)_1fr] items-center gap-4">
@@ -26,14 +27,14 @@ export default function Header({ doctor }: HeaderProps) {
 
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e8f5ee] text-xs font-semibold text-[#1a5c3a]">
-              {doctor.initials}
+              {employee.initials}
             </div>
             <div className="hidden text-left lg:block">
               <p className="text-sm font-medium leading-tight text-gray-900">
-                {doctor.shortName}
+                {employee.shortName}
               </p>
               <p className="text-[11px] leading-tight text-gray-500">
-                {doctor.role}, {doctor.area}
+                {employee.positionTitle || ROLE_LABELS[employee.role]}
               </p>
             </div>
           </div>

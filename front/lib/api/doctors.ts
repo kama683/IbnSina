@@ -1,23 +1,16 @@
 import { apiGet, apiPatch } from "./api";
+import type { Employee } from "@/lib/api/employees";
 import type {
   DoctorBadge,
   EducationEntry,
   WorkDaySchedule,
 } from "@/lib/types";
 
-export interface Doctor {
-  id: number;
-  fullName: string;
-  firstNamePatronymic: string;
-  shortName: string;
-  initials: string;
-  role: string;
+/** Профиль врача — есть только у сотрудников с ролью doctor/head_doctor
+ * (см. HAS_DOCTOR_PROFILE_ROLES в lib/roles.ts). GET на этот эндпоинт для
+ * сотрудника без doctor_profile вернёт 404. */
+export interface DoctorProfile extends Employee {
   area: string;
-  office: string;
-}
-
-export interface DoctorProfile extends Doctor {
-  title: string;
   office: string;
   badges: DoctorBadge[];
   contacts: {
@@ -51,16 +44,15 @@ export type DoctorProfileUpdate = {
   schedule?: WorkDaySchedule[];
 };
 
-export function getCurrentDoctor(): Promise<Doctor> {
-  return apiGet<Doctor>("/api/doctors/me");
-}
-
+// Этап 0, коммит 9: переключено с deprecated /api/doctors/* на канонические
+// /api/employees/* — /api/doctors/* остаётся только как алиас для обратной
+// совместимости до его снятия в коммите 11 (см. docs/PHASE0_ANALYSIS.md).
 export function getDoctorProfile(): Promise<DoctorProfile> {
-  return apiGet<DoctorProfile>("/api/doctors/me/profile");
+  return apiGet<DoctorProfile>("/api/employees/me/profile");
 }
 
 export function updateDoctorProfile(
   payload: DoctorProfileUpdate,
 ): Promise<DoctorProfile> {
-  return apiPatch<DoctorProfile>("/api/doctors/me", payload);
+  return apiPatch<DoctorProfile>("/api/employees/me", payload);
 }

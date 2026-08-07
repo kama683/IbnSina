@@ -12,14 +12,24 @@ import {
   LogOut,
   UserRound,
 } from "lucide-react";
-import type { Doctor } from "@/lib/api/doctors";
+import type { Employee } from "@/lib/api/employees";
 import { clearAuthToken } from "@/lib/api/token";
+import { NAV_ITEMS, ROLE_LABELS, isRoleAllowed, type NavItemConfig } from "@/lib/roles";
 
 type SidebarProps = {
-  doctor: Doctor;
+  employee: Employee;
 };
 
-export default function Sidebar({ doctor }: SidebarProps) {
+const ICONS: Record<NavItemConfig["icon"], React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
+  dashboard: LayoutDashboard,
+  calendar: Calendar,
+  queue: MonitorCheck,
+  patients: Users,
+  profile: UserRound,
+  settings: Settings,
+};
+
+export default function Sidebar({ employee }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -28,6 +38,8 @@ export default function Sidebar({ doctor }: SidebarProps) {
     router.push("/login");
     router.refresh();
   }
+
+  const items = NAV_ITEMS.filter((item) => isRoleAllowed(employee.role, item.roles));
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex">
@@ -42,55 +54,24 @@ export default function Sidebar({ doctor }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pt-2">
-        <NavGroup title="Рабочее место">
-          <NavItem
-            href="/"
-            icon={LayoutDashboard}
-            label="Дашборд"
-            pathname={pathname}
-          />
-          <NavItem
-            href="/appointments"
-            icon={Calendar}
-            label="Приёмы"
-            pathname={pathname}
-          />
-          <NavItem
-            href="/queue"
-            icon={MonitorCheck}
-            label="Живая очередь"
-            pathname={pathname}
-          />
-        </NavGroup>
-        <NavGroup title="Данные">
-          <NavItem
-            href="/patients"
-            icon={Users}
-            label="Пациенты"
-            pathname={pathname}
-          />
-        </NavGroup>
-        <NavGroup title="Система">
-          <NavItem
-            href="/profile"
-            icon={UserRound}
-            label="Профиль"
-            pathname={pathname}
-          />
-          <NavItem
-            href="/settings"
-            icon={Settings}
-            label="Настройки"
-            pathname={pathname}
-          />
+        <NavGroup title="Меню">
+          {items.map((item) => (
+            <NavItem
+              key={item.href}
+              href={item.href}
+              icon={ICONS[item.icon]}
+              label={item.label}
+              pathname={pathname}
+            />
+          ))}
         </NavGroup>
       </nav>
 
-      {/* Профиль врача внизу — данные приходят с сервера через layout */}
+      {/* Профиль сотрудника внизу — данные приходят с сервера через layout */}
       <div className="border-t border-gray-200/80 p-4">
-        <p className="text-sm font-medium text-gray-900">{doctor.fullName}</p>
+        <p className="text-sm font-medium text-gray-900">{employee.fullName}</p>
         <p className="mt-0.5 text-xs text-gray-500">
-          {doctor.area} · {doctor.role}
+          {employee.positionTitle || ROLE_LABELS[employee.role]}
         </p>
         <button
           type="button"

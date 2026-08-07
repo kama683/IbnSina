@@ -30,7 +30,7 @@ export default function ProfileSummaryCard({ profile }: Props) {
         <h2 className="mt-4 text-base font-semibold text-gray-900">
           {profile.fullName}
         </h2>
-        <p className="mt-1 text-sm text-gray-500">{profile.title}</p>
+        <p className="mt-1 text-sm text-gray-500">{profile.positionTitle}</p>
         <p className="mt-0.5 text-sm text-gray-500">
           {profile.area} · {profile.office}
         </p>
