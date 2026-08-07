@@ -1,9 +1,9 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models.employee import Employee, EmployeeStatus
+from app.models.employee import Employee, EmployeeRole, EmployeeStatus
 from app.models.user import User
 from app.security import decode_access_token
 
@@ -31,12 +31,46 @@ def get_current_user(
 
 
 def get_current_employee(current_user: User = Depends(get_current_user)) -> Employee:
-    """Пока без ролевой проверки — просто резолвит текущего сотрудника и
-    блокирует уволенных. require_roles/require_self_or_roles появятся в
-    коммите 6 вместе со снятием блокетной auth-зависимости из main.py."""
+    """Корень ролевой проверки. Уволенный сотрудник (status=fired) не проходит,
+    даже если у него ещё валидный JWT — см. критерий готовности Этапа 0."""
     employee = current_user.employee
     if employee is None:
         raise HTTPException(status_code=401, detail="Сотрудник не найден")
     if employee.status == EmployeeStatus.fired:
         raise HTTPException(status_code=401, detail="Учётная запись деактивирована")
     return employee
+
+
+def require_roles(*roles: EmployeeRole):
+    """Фабрика зависимости: доступ только для сотрудников с одной из ролей.
+
+    Используется как `Depends(require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor))`.
+    """
+
+    def dependency(employee: Employee = Depends(get_current_employee)) -> Employee:
+        if employee.role not in roles:
+            raise HTTPException(status_code=403, detail="Недостаточно прав")
+        return employee
+
+    return dependency
+
+
+def require_self_or_roles(id_param: str, *roles: EmployeeRole):
+    """Пропускает, если employee.id совпадает с path-параметром id_param, либо
+    роль сотрудника входит в roles.
+
+    Ни один эндпоинт Этапа 0 пока это не использует (нет PATCH /employees/{id}
+    и подобных) — задел под Этап 1/5, когда появится self-service редактирование.
+    """
+
+    def dependency(
+        request: Request, employee: Employee = Depends(get_current_employee)
+    ) -> Employee:
+        target = request.path_params.get(id_param)
+        if target is not None and str(employee.id) == str(target):
+            return employee
+        if employee.role in roles:
+            return employee
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    return dependency

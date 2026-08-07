@@ -2,13 +2,24 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
+from app.deps import require_roles
 from app.models.appointment import Appointment
+from app.models.employee import EmployeeRole
 from app.models.patient import Patient
 
 router = APIRouter()
 
+# "Пациент: поиск" в матрице плана — доступно всем пяти небольничным ролям.
+_ANY_STAFF = require_roles(
+    EmployeeRole.reception,
+    EmployeeRole.doctor,
+    EmployeeRole.nurse,
+    EmployeeRole.accountant,
+    EmployeeRole.head_doctor,
+)
 
-@router.get("")
+
+@router.get("", dependencies=[Depends(_ANY_STAFF)])
 def global_search(
     q: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
@@ -33,7 +44,7 @@ def global_search(
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .join(Patient, Appointment.patient_id == Patient.id)
         .filter(

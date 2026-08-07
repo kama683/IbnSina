@@ -4,14 +4,33 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
+from app.deps import require_roles
 from app.models import Patient
 from app.models.appointment import Appointment, AppointmentStatus
+from app.models.employee import EmployeeRole
 from app.models.health_metric import HealthMetric
 from app.models.hospitalization import Hospitalization
 from app.models.vaccination import Vaccination
 from app.schemas.patient import PatientCreateIn
 
 router = APIRouter()
+
+# Роли по матрице §2.2 плана (docs/PHASE0_ANALYSIS.md), см. отчёт по коммиту 6.
+_ANY_STAFF = require_roles(
+    EmployeeRole.reception,
+    EmployeeRole.doctor,
+    EmployeeRole.nurse,
+    EmployeeRole.accountant,
+    EmployeeRole.head_doctor,
+)
+# "Пациент: мед. данные (диагнозы, аллергии)" — accountant вне доступа.
+_VIEW_MEDICAL = require_roles(
+    EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.nurse, EmployeeRole.head_doctor
+)
+# "Пациент: витальные показатели" — только клинический персонал.
+_VIEW_VITALS = require_roles(EmployeeRole.doctor, EmployeeRole.nurse, EmployeeRole.head_doctor)
+# "Осмотр: заполнение" — только тот, кто ведёт приём.
+_VIEW_EXAMINATION = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
 
 _PATIENT_LOAD_OPTIONS = (
     joinedload(Patient.diseases),
@@ -227,7 +246,7 @@ def _serialize_visit_history(appointment: Appointment) -> dict:
     }
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(_ANY_STAFF)])
 def list_patients(
     page: int = Query(1, ge=1),
     limit: int = Query(8, ge=1, le=100),
@@ -268,7 +287,7 @@ def list_patients(
     }
 
 
-@router.post("")
+@router.post("", dependencies=[Depends(_ANY_STAFF)])
 def create_patient(payload: PatientCreateIn, db: Session = Depends(get_db)):
     existing = db.query(Patient).filter(Patient.iin == payload.iin).first()
     if existing:
@@ -293,7 +312,7 @@ def create_patient(payload: PatientCreateIn, db: Session = Depends(get_db)):
     return _serialize_patient(db, patient)
 
 
-@router.get("/{patient_id}/history")
+@router.get("/{patient_id}/history", dependencies=[Depends(_VIEW_MEDICAL)])
 def get_patient_history(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
     rows = (
@@ -306,7 +325,7 @@ def get_patient_history(patient_id: int, db: Session = Depends(get_db)):
     return [_serialize_history_entry(row) for row in rows]
 
 
-@router.get("/{patient_id}/health-metrics")
+@router.get("/{patient_id}/health-metrics", dependencies=[Depends(_VIEW_VITALS)])
 def get_patient_health_metrics(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
     rows = (
@@ -318,7 +337,7 @@ def get_patient_health_metrics(patient_id: int, db: Session = Depends(get_db)):
     return [_serialize_health_metric(row) for row in rows]
 
 
-@router.get("/{patient_id}/vaccinations")
+@router.get("/{patient_id}/vaccinations", dependencies=[Depends(_VIEW_VITALS)])
 def get_patient_vaccinations(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
     rows = (
@@ -330,7 +349,7 @@ def get_patient_vaccinations(patient_id: int, db: Session = Depends(get_db)):
     return [_serialize_vaccination(row, patient_id) for row in rows]
 
 
-@router.get("/{patient_id}/examination")
+@router.get("/{patient_id}/examination", dependencies=[Depends(_VIEW_EXAMINATION)])
 def get_patient_examination(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
     appointment = _find_active_appointment(db, patient_id)
@@ -339,7 +358,7 @@ def get_patient_examination(patient_id: int, db: Session = Depends(get_db)):
     return _serialize_examination(appointment)
 
 
-@router.get("/{patient_id}/visit-history")
+@router.get("/{patient_id}/visit-history", dependencies=[Depends(_VIEW_MEDICAL)])
 def get_patient_visit_history(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
     rows = (
@@ -352,7 +371,7 @@ def get_patient_visit_history(patient_id: int, db: Session = Depends(get_db)):
     return [_serialize_visit_history(row) for row in rows]
 
 
-@router.get("/{patient_id}")
+@router.get("/{patient_id}", dependencies=[Depends(_ANY_STAFF)])
 def get_patient(patient_id: int, db: Session = Depends(get_db)):
     patient = _get_patient_or_404(db, patient_id)
     return _serialize_patient(db, patient)

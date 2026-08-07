@@ -12,7 +12,7 @@ os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
 import pytest
 from fastapi.testclient import TestClient
 
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
 from app.main import app
 
 
@@ -26,3 +26,13 @@ def _schema():
 @pytest.fixture()
 def client():
     return TestClient(app)
+
+
+@pytest.fixture()
+def db_session():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()

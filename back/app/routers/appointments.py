@@ -5,14 +5,31 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.deps import get_current_employee
+from app.deps import require_roles
 from app.models.appointment import Appointment, AppointmentStatus
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeRole
 from app.models.patient import Patient
 from app.models.prescription import Prescription
 from app.schemas.appointment import AppointmentCreateIn, AppointmentUpdateIn
 
 router = APIRouter()
+
+# Роли по матрице §2.2 плана (docs/PHASE0_ANALYSIS.md), см. отчёт по коммиту 6:
+# кто видит расписание/очередь приёмов (не финансы, не склад).
+_VIEW_SCHEDULE = require_roles(
+    EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.nurse, EmployeeRole.head_doctor
+)
+# Управленческая статистика — доктор/главврач.
+_VIEW_STATS = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
+# Запись на приём — ТОЛЬКО "к себе": POST /appointments всегда пишет
+# employee_id = вызывающий сотрудник (выбора врача в теле запроса ещё нет —
+# это Этап 1, "многодокторская запись"). Поэтому reception сюда сознательно
+# НЕ включён, хотя в матрице плана у него есть "Запись на приём: к себе" —
+# для reception это означало бы «записать приём на самого себя как на врача»,
+# что семантически неверно до появления выбора врача в Этапе 1.
+_CREATE_APPOINTMENT = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
+# Осмотр/диагноз/назначения — только тот, кто ведёт приём.
+_MANAGE_EXAMINATION = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
 
 MONTHS_GENITIVE = [
     "января",
@@ -76,7 +93,7 @@ def _query_appointments(db: Session, from_date: date, to_date: date) -> list[App
     )
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(_VIEW_SCHEDULE)])
 def list_appointments(
     from_date: date = Query(..., alias="from"),
     to_date: date = Query(..., alias="to"),
@@ -86,14 +103,14 @@ def list_appointments(
     return [_serialize_appointment(row) for row in rows]
 
 
-@router.get("/week")
+@router.get("/week", dependencies=[Depends(_VIEW_SCHEDULE)])
 def get_week_appointments(db: Session = Depends(get_db)):
     week_start, week_end = _week_bounds()
     rows = _query_appointments(db, week_start, week_end)
     return [_serialize_appointment(row) for row in rows]
 
 
-@router.get("/stats/week")
+@router.get("/stats/week", dependencies=[Depends(_VIEW_STATS)])
 def get_week_stats(db: Session = Depends(get_db)):
     week_start, week_end = _week_bounds()
 
@@ -157,7 +174,7 @@ def get_week_stats(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/queue")
+@router.get("/queue", dependencies=[Depends(_VIEW_SCHEDULE)])
 def get_queue_appointments(db: Session = Depends(get_db)):
     today = date.today()
     rows = (
@@ -178,7 +195,7 @@ def get_queue_appointments(db: Session = Depends(get_db)):
     return [_serialize_appointment(row) for row in rows]
 
 
-@router.get("/today")
+@router.get("/today", dependencies=[Depends(_VIEW_SCHEDULE)])
 def get_today_appointments(db: Session = Depends(get_db)):
     today = date.today()
     rows = (
@@ -194,7 +211,7 @@ def get_today_appointments(db: Session = Depends(get_db)):
     return [_serialize_appointment(row) for row in rows]
 
 
-@router.get("/current")
+@router.get("/current", dependencies=[Depends(_VIEW_SCHEDULE)])
 def get_current_appointment(db: Session = Depends(get_db)):
     today = date.today()
     row = (
@@ -218,7 +235,7 @@ def get_current_appointment(db: Session = Depends(get_db)):
 def create_appointment(
     payload: AppointmentCreateIn,
     db: Session = Depends(get_db),
-    employee: Employee = Depends(get_current_employee),
+    employee: Employee = Depends(_CREATE_APPOINTMENT),
 ):
     patient = db.query(Patient).filter(Patient.id == payload.patient_id).first()
     if not patient:
@@ -280,7 +297,7 @@ def _sync_prescriptions(
         )
 
 
-@router.patch("/{appointment_id}")
+@router.patch("/{appointment_id}", dependencies=[Depends(_MANAGE_EXAMINATION)])
 def update_appointment(
     appointment_id: int,
     payload: AppointmentUpdateIn,
