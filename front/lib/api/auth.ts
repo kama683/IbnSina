@@ -7,8 +7,6 @@ export interface AuthUser {
   fullName: string;
   role: EmployeeRole;
   employeeId: number;
-  // Deprecated-алиас employeeId, то же значение — снимается в коммите 11.
-  doctorId: number | null;
   mustChangePassword: boolean;
 }
 

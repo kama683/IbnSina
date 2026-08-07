@@ -44,9 +44,8 @@ export type DoctorProfileUpdate = {
   schedule?: WorkDaySchedule[];
 };
 
-// Этап 0, коммит 9: переключено с deprecated /api/doctors/* на канонические
-// /api/employees/* — /api/doctors/* остаётся только как алиас для обратной
-// совместимости до его снятия в коммите 11 (см. docs/PHASE0_ANALYSIS.md).
+// Этап 0, коммит 9: переключено на канонические employees-эндпоинты
+// (см. docs/PHASE0_ANALYSIS.md) — deprecated alias-роутер снят в коммите 11.
 export function getDoctorProfile(): Promise<DoctorProfile> {
   return apiGet<DoctorProfile>("/api/employees/me/profile");
 }

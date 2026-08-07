@@ -42,8 +42,6 @@ def _serialize_user(user: User) -> dict:
         "fullName": user.full_name,
         "role": user.employee.role.value,
         "employeeId": user.employee_id,
-        # Deprecated-алиас employeeId, то же значение — снимается в коммите 11.
-        "doctorId": user.employee_id,
         "mustChangePassword": user.must_change_password,
     }
 
