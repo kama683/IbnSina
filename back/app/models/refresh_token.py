@@ -20,6 +20,4 @@ class RefreshToken(Base):
         DateTime, nullable=False, server_default=func.now()
     )
 
-    # back_populates появится в коммите 5, когда у User будет свой конец связи
-    # (User.refresh_tokens) — до этого односторонняя связь.
-    user = relationship("User")
+    user = relationship("User", back_populates="refresh_tokens")

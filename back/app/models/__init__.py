@@ -1,4 +1,3 @@
-from app.models.doctor import Doctor
 from app.models.doctor_education import DoctorEducation
 from app.models.patient import Patient
 from app.models.patient_diseases import DiseaseTagVariant, PatientDisease
@@ -9,14 +8,13 @@ from app.models.hospitalization import Hospitalization
 from app.models.prescription import Prescription
 from app.models.schedule import Schedule
 from app.models.health_metric import HealthMetric
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.employee import Employee, EmployeeRole, EmployeeStatus, SalaryType
 from app.models.doctor_profile import DoctorProfile
 from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
 
 __all__ = [
-    "Doctor",
     "DoctorEducation",
     "Patient",
     "PatientDisease",
@@ -30,7 +28,6 @@ __all__ = [
     "Schedule",
     "HealthMetric",
     "User",
-    "UserRole",
     "Employee",
     "EmployeeRole",
     "EmployeeStatus",

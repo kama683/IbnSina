@@ -7,7 +7,6 @@ from app.database import Base
 from app.models import (  # noqa: F401
     Appointment,
     AuditLog,
-    Doctor,
     DoctorEducation,
     DoctorProfile,
     Employee,

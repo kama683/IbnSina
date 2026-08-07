@@ -17,7 +17,7 @@ from app.models.hospitalization import Hospitalization
 from app.models.schedule import Schedule
 from app.models.health_metric import HealthMetric
 from app.models.doctor_education import DoctorEducation
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.security import hash_password
 
 EDUCATION_DATA = [
@@ -80,7 +80,6 @@ SEED_PASSWORD = "doctor123"
 USER_DATA = {
     "email": "sharipov@poliklinika12.kz",
     "full_name": "Шарипов Муслим Юнусалиевич",
-    "role": UserRole.doctor,
 }
 
 # Пять новых сотрудников — по одному на каждую оставшуюся роль матрицы.
@@ -585,9 +584,6 @@ def _sync_user(db, email: str, full_name: str, employee_id: int, password: str) 
             User(
                 email=email,
                 full_name=full_name,
-                # role/UserRole снимаются в коммите 5 — до этого User.role
-                # по-прежнему NOT NULL, ставим ближайший по смыслу.
-                role=UserRole.doctor,
                 employee_id=employee_id,
                 password_hash=hash_password(password),
             )
