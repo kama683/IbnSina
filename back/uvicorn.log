@@ -1,0 +1,117 @@
+﻿.\.venv\Scripts\python.exe : INFO:     Will watch for changes in these directories: ['C:\\Users\\kamro\\Desktop\\Policl
+inica\\back']
+At line:1 char:346
++ ... inica\back; .\.venv\Scripts\python.exe -m uvicorn app.main:app --relo ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO:     Will ...clinica\\back']:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [13464] using WatchFiles
+INFO:     Started server process [7960]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:60454 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60755 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60755 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60766 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60763 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60765 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60764 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60777 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60778 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60775 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60776 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60787 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60788 - "GET /api/appointments?from=2026-08-03&to=2026-08-08 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60789 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60790 - "GET /api/patients?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60757 - "OPTIONS /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60757 - "OPTIONS /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60757 - "GET /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60757 - "GET /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60787 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60788 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60789 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60790 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60789 - "GET /api/patients/2/visit-history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60787 - "GET /api/patients/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60788 - "GET /api/patients/2/examination HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60793 - "OPTIONS /api/appointments/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60793 - "PATCH /api/appointments/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60787 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60788 - "GET /api/patients/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60789 - "GET /api/patients/2/examination HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60802 - "GET /api/patients/2/visit-history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /api/appointments/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60808 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60813 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60814 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60815 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60821 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60822 - "GET /api/appointments?from=2026-08-03&to=2026-08-08 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60823 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60824 - "GET /api/patients?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60827 - "GET /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60827 - "GET /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60845 - "GET /api/appointments/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60850 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60851 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60852 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60853 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60861 - "GET /api/patients?page=1&limit=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60861 - "GET /api/patients/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60866 - "GET /api/patients/2/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60867 - "GET /api/patients/2/health-metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60868 - "GET /api/patients/2/vaccinations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60870 - "GET /api/doctors/me/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60894 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60895 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60896 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60897 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61129 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61130 - "GET /api/appointments?from=2026-08-03&to=2026-08-08 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61131 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61132 - "GET /api/patients?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61136 - "OPTIONS /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61136 - "OPTIONS /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61136 - "GET /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /api/appointments?from=2026-08-07&to=2026-08-07 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61153 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61152 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61151 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61156 - "GET /api/appointments/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61170 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61172 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61173 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61171 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61266 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61269 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61275 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61276 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61277 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61278 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61275 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61276 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61277 - "GET /api/appointments?from=2026-08-03&to=2026-08-08 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61278 - "GET /api/patients?page=1&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61292 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61299 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61300 - "GET /api/patients/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61302 - "GET /api/patients/2/health-metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61303 - "GET /api/patients/2/vaccinations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61301 - "GET /api/patients/2/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61299 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61300 - "GET /api/patients/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61301 - "GET /api/patients/2/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61302 - "GET /api/patients/2/health-metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61303 - "GET /api/patients/2/vaccinations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61348 - "GET /api/patients/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61349 - "GET /api/patients/1/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61351 - "GET /api/patients/1/vaccinations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61350 - "GET /api/patients/1/health-metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57931 - "GET /api/appointments/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57929 - "GET /api/doctors/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57930 - "GET /api/appointments/current HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57932 - "GET /api/appointments/stats/week HTTP/1.1" 200 OK

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import StatusBadge from "@/components/ui/StatusBadge";
 import type { Appointment } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
@@ -27,7 +28,7 @@ export default function AppointmentsTable({ appointments }: Props) {
             {appointments.map((appointment) => (
               <tr
                 key={appointment.id}
-                className="group border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
+                className="group relative border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
               >
                 <td className="px-5 py-3 text-sm text-gray-500">
                   {appointment.date}
@@ -51,6 +52,11 @@ export default function AppointmentsTable({ appointments }: Props) {
                   <StatusBadge status={appointment.status} />
                 </td>
                 <td className="px-2 py-3 text-gray-300 group-hover:text-gray-400">
+                  <Link
+                    href={`/patients/${appointment.patientId}`}
+                    className="absolute inset-0"
+                    aria-label={`Открыть карточку пациента ${appointment.patient}`}
+                  />
                   <ChevronRight className="h-4 w-4" />
                 </td>
               </tr>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   LayoutDashboard,
@@ -13,6 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 import type { Doctor } from "@/lib/api/doctors";
+import { clearAuthToken } from "@/lib/api/token";
 
 type SidebarProps = {
   doctor: Doctor;
@@ -20,6 +21,13 @@ type SidebarProps = {
 
 export default function Sidebar({ doctor }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleLogout() {
+    clearAuthToken();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex">
@@ -86,6 +94,7 @@ export default function Sidebar({ doctor }: SidebarProps) {
         </p>
         <button
           type="button"
+          onClick={handleLogout}
           className="mt-3 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-800"
         >
           <LogOut className="h-4 w-4" />

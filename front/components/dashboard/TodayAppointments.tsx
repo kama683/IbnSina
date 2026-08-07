@@ -41,7 +41,7 @@ export default function TodayAppointments({ appointments, subtitle }: Props) {
             {appointments.map((appointment) => (
               <tr
                 key={appointment.id}
-                className="group border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
+                className="group relative border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
               >
                 <td className="px-5 py-3 text-sm font-medium text-gray-900">
                   {appointment.time}
@@ -56,6 +56,11 @@ export default function TodayAppointments({ appointments, subtitle }: Props) {
                   <StatusBadge status={appointment.status} />
                 </td>
                 <td className="px-2 py-3 text-gray-300 group-hover:text-gray-400">
+                  <Link
+                    href={`/patients/${appointment.patientId}`}
+                    className="absolute inset-0"
+                    aria-label={`Открыть карточку пациента ${appointment.patient}`}
+                  />
                   <ChevronRight className="h-4 w-4" />
                 </td>
               </tr>

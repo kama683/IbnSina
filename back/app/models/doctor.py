@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -29,9 +29,6 @@ class Doctor(Base):
     about: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     experience_years: Mapped[int | None] = mapped_column(nullable=True)
 
-    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
-
-    department = relationship("Department", back_populates="doctors")
     user = relationship("User", back_populates="doctor", uselist=False)
     appointments = relationship("Appointment", back_populates="doctor")
     hospitalizations = relationship("Hospitalization", back_populates="doctor")

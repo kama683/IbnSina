@@ -1,3 +1,5 @@
+from datetime import date as Date
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.appointment import AppointmentStatus
@@ -27,7 +29,7 @@ class AppointmentUpdateIn(BaseModel):
 
 class AppointmentCreateIn(BaseModel):
     patient_id: int = Field(alias="patientId")
-    date: date
+    date: Date
     time: str
     complaint: str
 

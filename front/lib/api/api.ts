@@ -5,9 +5,25 @@
  * а не через голый fetch в компонентах — так проще менять URL, ловить ошибки и типизировать ответы.
  */
 
+import { clearAuthToken, getAuthToken } from "./token";
+
 // Адрес бэкенда из .env.local; fallback на localhost для локальной разработки
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function handleUnauthorized(status: number): void {
+  if (status !== 401) return;
+  if (typeof window === "undefined") return;
+  clearAuthToken();
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
 
 /**
  * Ошибка API — бросаем её, когда сервер ответил не 2xx.
@@ -38,13 +54,14 @@ export async function apiGet<T>(
   const url = `${API_URL}${path}`;
 
   const response = await fetch(url, {
+    // Пробрасываем остальные опции (cache, next.revalidate и т.д.)
+    ...init,
     method: "GET",
     headers: {
       Accept: "application/json",
+      ...(await authHeaders()),
       ...init?.headers,
     },
-    // Пробрасываем остальные опции (cache, next.revalidate и т.д.)
-    ...init,
   });
 
   if (!response.ok) {
@@ -67,6 +84,7 @@ async function parseApiError(response: Response): Promise<never> {
   } catch {
     // Тело не JSON
   }
+  handleUnauthorized(response.status);
   throw new ApiError(response.status, message);
 }
 
@@ -81,14 +99,15 @@ export async function apiPatch<T>(
   const url = `${API_URL}${path}`;
 
   const response = await fetch(url, {
+    ...init,
     method: "PATCH",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...(await authHeaders()),
       ...init?.headers,
     },
     body: JSON.stringify(body),
-    ...init,
   });
 
   if (!response.ok) {
@@ -109,14 +128,15 @@ export async function apiPost<T>(
   const url = `${API_URL}${path}`;
 
   const response = await fetch(url, {
+    ...init,
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...(await authHeaders()),
       ...init?.headers,
     },
     body: JSON.stringify(body),
-    ...init,
   });
 
   if (!response.ok) {

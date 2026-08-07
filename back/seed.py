@@ -10,9 +10,9 @@ from app.models.vaccination import Vaccination
 from app.models.hospitalization import Hospitalization
 from app.models.schedule import Schedule
 from app.models.health_metric import HealthMetric
-from app.models.department import Department
 from app.models.doctor_education import DoctorEducation
 from app.models.user import User, UserRole
+from app.security import hash_password
 
 EDUCATION_DATA = [
     {
@@ -46,8 +46,6 @@ DOCTOR_DATA = {
     "area": "Участок №3",
 }
 
-DEPARTMENT_DATA = {"name": "Эндокринологическое отделение"}
-
 DOCTOR_PROFILE_EXTRA = {
     "title": "Врач-эндокринолог",
     "office": "Кабинет 214",
@@ -67,6 +65,8 @@ DOCTOR_PROFILE_EXTRA = {
     ),
     "experience_years": 14,
 }
+
+SEED_PASSWORD = "doctor123"
 
 USER_DATA = {
     "email": "sharipov@poliklinika12.kz",
@@ -310,27 +310,7 @@ HEALTH_METRICS_DATA: dict[str, list[dict]] = {
         {"label": "Холестерин", "value": "5.8 ммоль/л", "date": date(2026, 7, 10), "note": None},
     ],
 }
-DEPARTMENT_DATA = {"name": "Эндокринологическое отделение"}
 
-DOCTOR_PROFILE_EXTRA = {
-    "title": "Врач-эндокринолог",
-    "office": "Кабинет 214",
-    "phone": "+7 (701) 234-56-78",
-    "email": "sharipov@poliklinika12.kz",
-    "workplace": "Городская поликлиника №12, г. Астана, ул. Туран 24",
-    "specialty": "Эндокринолог (04.02.001)",
-    "qualification_category": "Высшая",
-    "license_number": "0023847-МД",
-    "license_valid_until": "31.12.2027",
-    "about": "Врач-эндокринолог с 14-летним стажем...",
-    "experience_years": 14,
-}
-
-USER_DATA = {
-    "email": "sharipov@poliklinika12.kz",
-    "full_name": "Шарипов Муслим Юнусалиевич",
-    "role": UserRole.doctor,
-}
 
 def _is_placeholder_iin(iin: str) -> bool:
     return iin.startswith("0000000000")
@@ -453,18 +433,9 @@ def _sync_health_metrics(db, patient: Patient) -> None:
         db.add(HealthMetric(patient_id=patient.id, **item))
 
 
-def _get_or_create_department(db) -> Department:
-    department = db.query(Department).first()
-    if department is None:
-        department = Department(**DEPARTMENT_DATA)
-        db.add(department)
-        db.flush()
-    return department
-
-
-def _get_or_create_doctor(db, department: Department) -> Doctor:
+def _get_or_create_doctor(db) -> Doctor:
     doctor = db.query(Doctor).first()
-    fields = {**DOCTOR_DATA, **DOCTOR_PROFILE_EXTRA, "department_id": department.id}
+    fields = {**DOCTOR_DATA, **DOCTOR_PROFILE_EXTRA}
 
     if doctor is None:
         doctor = Doctor(**fields)
@@ -480,19 +451,19 @@ def _get_or_create_doctor(db, department: Department) -> Doctor:
 def _sync_user(db, doctor: Doctor) -> None:
     user = db.query(User).filter(User.email == USER_DATA["email"]).first()
     if user is None:
-        db.add(User(**USER_DATA, doctor_id=doctor.id))
+        db.add(User(**USER_DATA, password_hash=hash_password(SEED_PASSWORD), doctor_id=doctor.id))
         return
 
     user.full_name = USER_DATA["full_name"]
     user.role = USER_DATA["role"]
     user.doctor_id = doctor.id
+    user.password_hash = hash_password(SEED_PASSWORD)
 
 
 def seed() -> None:
     db = SessionLocal()
     try:
-        department = _get_or_create_department(db)
-        doctor = _get_or_create_doctor(db, department)
+        doctor = _get_or_create_doctor(db)
         _sync_user(db, doctor)
         _sync_schedules(db, doctor)
         _sync_education(db, doctor)
@@ -513,6 +484,7 @@ def seed() -> None:
 
         db.commit()
         print(f"Готово: 1 врач, {len(patients_by_name)} пациентов, {len(APPOINTMENTS_DATA)} приёмов.")
+        print(f"Вход: {USER_DATA['email']} / {SEED_PASSWORD}")
     finally:
         db.close()
 

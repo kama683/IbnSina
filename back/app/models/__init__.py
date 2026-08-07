@@ -9,7 +9,6 @@ from app.models.hospitalization import Hospitalization
 from app.models.prescription import Prescription
 from app.models.schedule import Schedule
 from app.models.health_metric import HealthMetric
-from app.models.department import Department
 from app.models.user import User, UserRole
 
 __all__ = [
@@ -26,7 +25,6 @@ __all__ = [
     "Prescription",
     "Schedule",
     "HealthMetric",
-    "Department",
     "User",
     "UserRole",
 ]

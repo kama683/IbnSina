@@ -5,9 +5,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
+from app.deps import get_current_user
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.patient import Patient
 from app.models.prescription import Prescription
+from app.models.user import User
 from app.schemas.appointment import AppointmentCreateIn, AppointmentUpdateIn
 
 router = APIRouter()
@@ -216,10 +218,11 @@ def get_current_appointment(db: Session = Depends(get_db)):
 def create_appointment(
     payload: AppointmentCreateIn,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     from app.models.doctor import Doctor
 
-    doctor = db.query(Doctor).first()
+    doctor = db.query(Doctor).filter(Doctor.id == current_user.doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=404, detail="Врач не найден")
 

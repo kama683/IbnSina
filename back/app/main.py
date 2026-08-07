@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.deps import get_current_user
 from app.routers import appointments, auth, doctors, icd10, patients, search
 app = FastAPI(title="IbnSina Api", version="1.0.0")
 
@@ -12,12 +13,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(doctors.router, prefix="/api/doctors", tags=["doctors"])
+_auth_required = [Depends(get_current_user)]
+
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(appointments.router, prefix="/api/appointments", tags=["appointments"])
-app.include_router(patients.router, prefix="/api/patients", tags=["patients"])
-app.include_router(search.router, prefix="/api/search", tags=["search"])
-app.include_router(icd10.router, prefix="/api/icd10", tags=["icd10"])
+app.include_router(
+    doctors.router, prefix="/api/doctors", tags=["doctors"], dependencies=_auth_required
+)
+app.include_router(
+    appointments.router,
+    prefix="/api/appointments",
+    tags=["appointments"],
+    dependencies=_auth_required,
+)
+app.include_router(
+    patients.router, prefix="/api/patients", tags=["patients"], dependencies=_auth_required
+)
+app.include_router(
+    search.router, prefix="/api/search", tags=["search"], dependencies=_auth_required
+)
+app.include_router(
+    icd10.router, prefix="/api/icd10", tags=["icd10"], dependencies=_auth_required
+)
 
 
 @app.get("/health")

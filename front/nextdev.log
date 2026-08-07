@@ -1,0 +1,49 @@
+﻿
+> front@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.209.27.237:3000
+- Environments: .env.local
+✓ Ready in 901ms
+
+ GET /login?next=%2F 200 in 1516ms (next.js: 1120ms, proxy.ts: 14ms, application-code: 382ms)
+ GET / 200 in 354ms (next.js: 53ms, proxy.ts: 6ms, application-code: 295ms)
+ GET / 200 in 304ms (next.js: 12ms, proxy.ts: 9ms, application-code: 284ms)
+ GET /appointments 200 in 173ms (next.js: 52ms, proxy.ts: 7ms, application-code: 114ms)
+ GET / 200 in 242ms (next.js: 10ms, proxy.ts: 8ms, application-code: 224ms)
+ GET /patients/2/examination 200 in 1331ms (next.js: 1230ms, proxy.ts: 8ms, application-code: 93ms)
+ GET /patients/2/examination 200 in 152ms (next.js: 15ms, proxy.ts: 6ms, application-code: 131ms)
+ GET /queue 200 in 133ms (next.js: 51ms, proxy.ts: 5ms, application-code: 77ms)
+ GET / 200 in 149ms (next.js: 9ms, proxy.ts: 5ms, application-code: 134ms)
+ GET /appointments 200 in 98ms (next.js: 9ms, proxy.ts: 6ms, application-code: 83ms)
+ GET /queue 200 in 77ms (next.js: 19ms, proxy.ts: 13ms, application-code: 46ms)
+ GET / 200 in 100ms (next.js: 7ms, proxy.ts: 4ms, application-code: 89ms)
+ GET /patients 200 in 153ms (next.js: 78ms, proxy.ts: 17ms, application-code: 58ms)
+ GET /patients/2 200 in 955ms (next.js: 836ms, proxy.ts: 15ms, application-code: 105ms)
+ GET /profile 200 in 155ms (next.js: 81ms, proxy.ts: 13ms, application-code: 61ms)
+ GET / 200 in 108ms (next.js: 10ms, proxy.ts: 8ms, application-code: 90ms)
+ GET /appointments 200 in 112ms (next.js: 14ms, proxy.ts: 14ms, application-code: 85ms)
+ GET / 200 in 98ms (next.js: 7ms, proxy.ts: 7ms, application-code: 83ms)
+ GET /queue 200 in 111ms (next.js: 17ms, proxy.ts: 17ms, application-code: 77ms)
+ GET / 200 in 105ms (next.js: 10ms, proxy.ts: 7ms, application-code: 88ms)
+✓ Compiled in 76ms
+ GET / 200 in 281ms (next.js: 106ms, proxy.ts: 79ms, application-code: 96ms)
+✓ Compiled in 49ms
+ GET / 200 in 254ms (next.js: 91ms, proxy.ts: 71ms, application-code: 93ms)
+✓ Compiled in 81ms
+ GET / 200 in 289ms (next.js: 110ms, proxy.ts: 75ms, application-code: 103ms)
+✓ Compiled in 55ms
+ GET / 200 in 389ms (next.js: 130ms, proxy.ts: 75ms, application-code: 185ms)
+ GET / 200 in 84ms (next.js: 7ms, proxy.ts: 12ms, application-code: 65ms)
+✓ Compiled in 41ms
+ GET / 200 in 412ms (next.js: 135ms, proxy.ts: 80ms, application-code: 197ms)
+ GET / 200 in 85ms (next.js: 7ms, proxy.ts: 19ms, application-code: 59ms)
+ GET /login 200 in 212ms (next.js: 38ms, proxy.ts: 8ms, application-code: 166ms)
+ GET / 200 in 287ms (next.js: 8ms, proxy.ts: 6ms, application-code: 274ms)
+ GET /appointments 200 in 386ms (next.js: 129ms, proxy.ts: 5ms, application-code: 251ms)
+ GET /patients/2 200 in 278ms (next.js: 46ms, proxy.ts: 9ms, application-code: 223ms)
+ GET /patients/2 200 in 155ms (next.js: 9ms, proxy.ts: 4ms, application-code: 141ms)
+ GET /patients/1 200 in 144ms (next.js: 35ms, proxy.ts: 14ms, application-code: 95ms)
+ GET / 200 in 465ms (next.js: 34ms, proxy.ts: 138ms, application-code: 293ms)
