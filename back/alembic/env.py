@@ -6,13 +6,17 @@ from app.config import settings
 from app.database import Base
 from app.models import (  # noqa: F401
     Appointment,
+    AuditLog,
     Doctor,
     DoctorEducation,
+    DoctorProfile,
+    Employee,
     Hospitalization,
     Patient,
     PatientAllergy,
     PatientDisease,
     Prescription,
+    RefreshToken,
     Schedule,
     User,
     Vaccination,

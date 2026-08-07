@@ -10,6 +10,10 @@ from app.models.prescription import Prescription
 from app.models.schedule import Schedule
 from app.models.health_metric import HealthMetric
 from app.models.user import User, UserRole
+from app.models.employee import Employee, EmployeeRole, EmployeeStatus, SalaryType
+from app.models.doctor_profile import DoctorProfile
+from app.models.refresh_token import RefreshToken
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Doctor",
@@ -27,4 +31,11 @@ __all__ = [
     "HealthMetric",
     "User",
     "UserRole",
+    "Employee",
+    "EmployeeRole",
+    "EmployeeStatus",
+    "SalaryType",
+    "DoctorProfile",
+    "RefreshToken",
+    "AuditLog",
 ]
