@@ -29,13 +29,9 @@ class Doctor(Base):
     about: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     experience_years: Mapped[int | None] = mapped_column(nullable=True)
 
+    # appointments/hospitalizations/schedules/education_entries сняты в этом
+    # коммите вместе с переключением роутеров на Employee/DoctorProfile —
+    # Appointment/Hospitalization/Schedule/DoctorEducation больше не ссылаются
+    # на Doctor. Сама таблица doctors и эта модель ещё существуют (снимаются
+    # в следующем коммите), но теперь ничем не используются.
     user = relationship("User", back_populates="doctor", uselist=False)
-    appointments = relationship("Appointment", back_populates="doctor")
-    hospitalizations = relationship("Hospitalization", back_populates="doctor")
-    schedules = relationship("Schedule", back_populates="doctor", cascade="all, delete-orphan")
-    education_entries = relationship(
-        "DoctorEducation",
-        back_populates="doctor",
-        cascade="all, delete-orphan",
-        order_by="DoctorEducation.year",
-    )

@@ -5,11 +5,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_employee
 from app.models.appointment import Appointment, AppointmentStatus
+from app.models.employee import Employee
 from app.models.patient import Patient
 from app.models.prescription import Prescription
-from app.models.user import User
 from app.schemas.appointment import AppointmentCreateIn, AppointmentUpdateIn
 
 router = APIRouter()
@@ -58,7 +58,7 @@ def _serialize_appointment(appointment: Appointment) -> dict:
         "patient": appointment.patient.short_name,
         "complaint": appointment.complaint,
         "diagnosis": appointment.diagnosis,
-        "doctor": appointment.doctor.short_name,
+        "doctor": appointment.employee.short_name,
         "status": appointment.status.value,
     }
 
@@ -68,7 +68,7 @@ def _query_appointments(db: Session, from_date: date, to_date: date) -> list[App
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .filter(Appointment.date >= from_date, Appointment.date <= to_date)
         .order_by(Appointment.date, Appointment.time)
@@ -164,7 +164,7 @@ def get_queue_appointments(db: Session = Depends(get_db)):
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .filter(
             Appointment.date == today,
@@ -185,7 +185,7 @@ def get_today_appointments(db: Session = Depends(get_db)):
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .filter(Appointment.date == today)
         .order_by(Appointment.time)
@@ -201,7 +201,7 @@ def get_current_appointment(db: Session = Depends(get_db)):
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .filter(
             Appointment.date == today,
@@ -218,14 +218,8 @@ def get_current_appointment(db: Session = Depends(get_db)):
 def create_appointment(
     payload: AppointmentCreateIn,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    employee: Employee = Depends(get_current_employee),
 ):
-    from app.models.doctor import Doctor
-
-    doctor = db.query(Doctor).filter(Doctor.id == current_user.doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Врач не найден")
-
     patient = db.query(Patient).filter(Patient.id == payload.patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Пациент не найден")
@@ -233,7 +227,7 @@ def create_appointment(
     conflict = (
         db.query(Appointment)
         .filter(
-            Appointment.doctor_id == doctor.id,
+            Appointment.employee_id == employee.id,
             Appointment.date == payload.date,
             Appointment.time == payload.time,
         )
@@ -248,7 +242,7 @@ def create_appointment(
         complaint=payload.complaint,
         status=AppointmentStatus.scheduled,
         patient_id=payload.patient_id,
-        doctor_id=doctor.id,
+        employee_id=employee.id,
     )
     db.add(appointment)
     db.commit()
@@ -257,7 +251,7 @@ def create_appointment(
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .filter(Appointment.id == appointment.id)
         .first()
@@ -322,7 +316,7 @@ def update_appointment(
     if payload.status is not None:
         if payload.status == AppointmentStatus.in_progress:
             db.query(Appointment).filter(
-                Appointment.doctor_id == appointment.doctor_id,
+                Appointment.employee_id == appointment.employee_id,
                 Appointment.date == appointment.date,
                 Appointment.status == AppointmentStatus.in_progress,
                 Appointment.id != appointment.id,
@@ -343,7 +337,7 @@ def update_appointment(
         db.query(Appointment)
         .options(
             joinedload(Appointment.patient),
-            joinedload(Appointment.doctor),
+            joinedload(Appointment.employee),
         )
         .filter(Appointment.id == appointment_id)
         .first()

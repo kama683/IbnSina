@@ -32,10 +32,10 @@ class Appointment(Base):
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
-    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"))
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
 
     patient = relationship("Patient", back_populates="appointments")
-    doctor = relationship("Doctor", back_populates="appointments")
+    employee = relationship("Employee", back_populates="appointments")
     prescriptions = relationship("Prescription", back_populates="appointment", cascade="all, delete-orphan")
 
     @property

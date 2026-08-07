@@ -23,7 +23,12 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
-    # Связь с врачом (для role=doctor)
+    # Связь с врачом (для role=doctor) — снимается вместе с doctors в коммите 5.
     doctor_id: Mapped[int | None] = mapped_column(ForeignKey("doctors.id"), unique=True, nullable=True)
+    # employee_id уже NOT NULL здесь: коммит 2 бэкфиллит его для всех
+    # существующих users, так что на момент этого коммита пустых строк уже
+    # нет — миграция на NOT NULL на уровне БД всё равно только в коммите 5.
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, nullable=False)
 
     doctor = relationship("Doctor", back_populates="user")
+    employee = relationship("Employee", back_populates="user", uselist=False)

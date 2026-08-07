@@ -8,9 +8,13 @@ class DoctorEducation(Base):
     __tablename__ = "doctor_education"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), index=True)
+    # Не employee_id — см. решение по вопросу 3 в docs/PHASE0_ANALYSIS.md:
+    # медобразование принадлежит профилю врача, а не любому сотруднику.
+    doctor_profile_id: Mapped[int] = mapped_column(
+        ForeignKey("doctor_profiles.id"), index=True
+    )
     year: Mapped[str] = mapped_column(String(4))
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str] = mapped_column(String(500))
 
-    doctor = relationship("Doctor", back_populates="education_entries")
+    doctor_profile = relationship("DoctorProfile", back_populates="education_entries")

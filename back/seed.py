@@ -1,9 +1,15 @@
-"""Заполняет БД тестовыми данными (источник — seed-константы ниже)."""
+"""Заполняет БД тестовыми данными (источник — seed-константы ниже).
+
+Этап 0 (коммит 4): переключено с Doctor на Employee/DoctorProfile. Заводит
+одного врача (перенесён из старого DOCTOR_DATA/DOCTOR_PROFILE_EXTRA) и пять
+новых сотрудников — по одному на каждую из остальных ролей матрицы
+(docs/PHASE0_ANALYSIS.md), чтобы было кем логиниться при проверке RBAC.
+"""
 
 from datetime import date
 
 from app.database import SessionLocal
-from app.models import Appointment, AppointmentStatus, Doctor, Patient
+from app.models import Appointment, AppointmentStatus, DoctorProfile, Employee, EmployeeRole, EmployeeStatus, Patient, SalaryType
 from app.models.patient_diseases import DiseaseTagVariant, PatientDisease
 from app.models.patient_allergies import PatientAllergy
 from app.models.vaccination import Vaccination
@@ -37,20 +43,23 @@ EDUCATION_DATA = [
     },
 ]
 
-DOCTOR_DATA = {
+# Перенесено из старого DOCTOR_DATA/DOCTOR_PROFILE_EXTRA. Старый короткий
+# ярлык role="Эндокринолог" не сохранён как отдельное поле — см. решение по
+# вопросу 1 в docs/PHASE0_ANALYSIS.md (position_title занимает его слот).
+DOCTOR_EMPLOYEE_DATA = {
     "full_name": "Шарипов Муслим Юнусалиевич",
     "first_name_patronymic": "Шарипов Муслим",
     "short_name": "Шарипов М.Ю.",
     "initials": "AC",
-    "role": "Эндокринолог",
-    "area": "Участок №3",
-}
-
-DOCTOR_PROFILE_EXTRA = {
-    "title": "Врач-эндокринолог",
-    "office": "Кабинет 214",
+    "role": EmployeeRole.doctor,
+    "position_title": "Врач-эндокринолог",
     "phone": "+7 (701) 234-56-78",
     "email": "sharipov@poliklinika12.kz",
+}
+
+DOCTOR_PROFILE_DATA = {
+    "area": "Участок №3",
+    "office": "Кабинет 214",
     "workplace": "Городская поликлиника №12, г. Астана, ул. Туран 24",
     "specialty": "Эндокринолог (04.02.001)",
     "qualification_category": "Высшая",
@@ -72,6 +81,74 @@ USER_DATA = {
     "email": "sharipov@poliklinika12.kz",
     "full_name": "Шарипов Муслим Юнусалиевич",
     "role": UserRole.doctor,
+}
+
+# Пять новых сотрудников — по одному на каждую оставшуюся роль матрицы.
+# Пароли известны для проверки RBAC (не для прод-эксплуатации).
+NEW_EMPLOYEES_DATA: dict[str, dict] = {
+    "reception": {
+        "full_name": "Байжанова Гульмира Ануаровна",
+        "first_name_patronymic": "Байжанова Гульмира",
+        "short_name": "Байжанова Г.А.",
+        "initials": "БГ",
+        "position_title": "Администратор регистратуры",
+        "phone": "+7 (701) 890-12-34",
+        "email": "reception@ibnsina.local",
+        "password": "reception123",
+    },
+    "nurse": {
+        "full_name": "Серикова Айгуль Толеугазиевна",
+        "first_name_patronymic": "Серикова Айгуль",
+        "short_name": "Серикова А.Т.",
+        "initials": "СА",
+        "position_title": "Медицинская сестра",
+        "phone": "+7 (701) 901-23-45",
+        "email": "nurse@ibnsina.local",
+        "password": "nurse123",
+    },
+    "accountant": {
+        "full_name": "Оспанов Ерлан Максутович",
+        "first_name_patronymic": "Оспанов Ерлан",
+        "short_name": "Оспанов Е.М.",
+        "initials": "ОЕ",
+        "position_title": "Бухгалтер",
+        "phone": "+7 (701) 012-34-56",
+        "email": "accountant@ibnsina.local",
+        "password": "accountant123",
+    },
+    "head_doctor": {
+        "full_name": "Токтаров Нурлан Абаевич",
+        "first_name_patronymic": "Токтаров Нурлан",
+        "short_name": "Токтаров Н.А.",
+        "initials": "ТН",
+        "position_title": "Главный врач",
+        "phone": "+7 (701) 123-45-67",
+        "email": "head_doctor@ibnsina.local",
+        "password": "headdoctor123",
+        # У главврача тоже есть врачебный профиль — он продолжает вести приём.
+        "doctor_profile": {
+            "office": "Кабинет 101",
+            "workplace": "Городская поликлиника №12, г. Астана, ул. Туран 24",
+            "specialty": "Терапевт (04.01.001)",
+            "qualification_category": "Высшая",
+            "license_number": "0019321-МД",
+            "license_valid_until": "20.03.2028",
+            "certificate_number": "№ СС-2021-00203",
+            "certificate_valid_until": "10.02.2028",
+            "about": "Главный врач поликлиники, ведёт приём по терапии.",
+            "experience_years": 21,
+        },
+    },
+    "admin": {
+        "full_name": "Жаксыбеков Тимур Асланович",
+        "first_name_patronymic": "Жаксыбеков Тимур",
+        "short_name": "Жаксыбеков Т.А.",
+        "initials": "ЖТ",
+        "position_title": "Системный администратор",
+        "phone": "+7 (701) 234-56-78",
+        "email": "admin@ibnsina.local",
+        "password": "admin123",
+    },
 }
 
 # Ключ — short_name, как в APPOINTMENTS_DATA и mock-data.ts
@@ -321,7 +398,7 @@ def _get_or_create_patient(db, short_name: str) -> Patient:
     fields = PATIENTS_DATA[short_name]
 
     if patient is None:
-        patient = Patient(area=DOCTOR_DATA["area"], **fields)
+        patient = Patient(area=DOCTOR_PROFILE_DATA["area"], **fields)
         db.add(patient)
         db.flush()
         return patient
@@ -333,7 +410,7 @@ def _get_or_create_patient(db, short_name: str) -> Patient:
     return patient
 
 
-def _get_or_create_appointment(db, doctor, patient, today: date, item: dict) -> Appointment:
+def _get_or_create_appointment(db, employee_id: int, patient, today: date, item: dict) -> Appointment:
     appointment = (
         db.query(Appointment)
         .filter(
@@ -358,7 +435,7 @@ def _get_or_create_appointment(db, doctor, patient, today: date, item: dict) -> 
             date=today,
             time=item["time"],
             patient_id=patient.id,
-            doctor_id=doctor.id,
+            employee_id=employee_id,
             **fields,
         )
         db.add(appointment)
@@ -390,7 +467,7 @@ def _sync_patient_allergies(db, patient: Patient) -> None:
         db.add(PatientAllergy(patient_id=patient.id, name=name))
 
 
-def _sync_hospitalizations(db, doctor, patient: Patient) -> None:
+def _sync_hospitalizations(db, employee_id: int, patient: Patient) -> None:
     item = HOSPITALIZATIONS_DATA.get(patient.short_name)
 
     for hospitalization in list(patient.hospitalizations):
@@ -398,7 +475,7 @@ def _sync_hospitalizations(db, doctor, patient: Patient) -> None:
     db.flush()
 
     if item is not None:
-        db.add(Hospitalization(patient_id=patient.id, doctor_id=doctor.id, **item))
+        db.add(Hospitalization(patient_id=patient.id, employee_id=employee_id, **item))
 
 
 def _sync_vaccinations(db, patient: Patient) -> None:
@@ -411,19 +488,21 @@ def _sync_vaccinations(db, patient: Patient) -> None:
     for item in items:
         db.add(Vaccination(patient_id=patient.id, **item))
 
-def _sync_education(db, doctor) -> None:
-    db.query(DoctorEducation).filter(DoctorEducation.doctor_id == doctor.id).delete()
+def _sync_education(db, doctor_profile_id: int) -> None:
+    db.query(DoctorEducation).filter(DoctorEducation.doctor_profile_id == doctor_profile_id).delete()
     db.flush()
     for item in EDUCATION_DATA:
-        db.add(DoctorEducation(doctor_id=doctor.id, **item))
+        db.add(DoctorEducation(doctor_profile_id=doctor_profile_id, **item))
 
 
-def _sync_schedules(db, doctor) -> None:
-    for row in list(doctor.schedules):
+def _sync_schedules(db, employee: Employee) -> None:
+    for row in list(employee.schedules):
         db.delete(row)
     db.flush()
     for item in SCHEDULES_DATA:
-        db.add(Schedule(doctor_id=doctor.id, **item))
+        db.add(Schedule(employee_id=employee.id, **item))
+
+
 def _sync_health_metrics(db, patient: Patient) -> None:
     items = HEALTH_METRICS_DATA.get(patient.short_name, [])
     for metric in list(patient.health_metrics):
@@ -433,40 +512,106 @@ def _sync_health_metrics(db, patient: Patient) -> None:
         db.add(HealthMetric(patient_id=patient.id, **item))
 
 
-def _get_or_create_doctor(db) -> Doctor:
-    doctor = db.query(Doctor).first()
-    fields = {**DOCTOR_DATA, **DOCTOR_PROFILE_EXTRA}
+def _get_or_create_doctor_employee(db) -> Employee:
+    employee = db.query(Employee).filter(Employee.email == DOCTOR_EMPLOYEE_DATA["email"]).first()
 
-    if doctor is None:
-        doctor = Doctor(**fields)
-        db.add(doctor)
+    if employee is None:
+        employee = Employee(
+            **DOCTOR_EMPLOYEE_DATA,
+            hired_at=date.today(),
+            status=EmployeeStatus.active,
+            salary_type=SalaryType.fixed,
+        )
+        db.add(employee)
         db.flush()
-        return doctor
+    else:
+        for key, value in DOCTOR_EMPLOYEE_DATA.items():
+            setattr(employee, key, value)
 
-    for key, value in fields.items():
-        setattr(doctor, key, value)
-    return doctor
+    profile = db.query(DoctorProfile).filter(DoctorProfile.employee_id == employee.id).first()
+    if profile is None:
+        profile = DoctorProfile(employee_id=employee.id, **DOCTOR_PROFILE_DATA)
+        db.add(profile)
+        db.flush()
+    else:
+        for key, value in DOCTOR_PROFILE_DATA.items():
+            setattr(profile, key, value)
+
+    return employee
 
 
-def _sync_user(db, doctor: Doctor) -> None:
-    user = db.query(User).filter(User.email == USER_DATA["email"]).first()
+def _get_or_create_new_employee(db, role_key: str, data: dict) -> Employee:
+    employee = db.query(Employee).filter(Employee.email == data["email"]).first()
+    fields = {
+        "full_name": data["full_name"],
+        "first_name_patronymic": data["first_name_patronymic"],
+        "short_name": data["short_name"],
+        "initials": data["initials"],
+        "role": EmployeeRole(role_key),
+        "position_title": data["position_title"],
+        "phone": data["phone"],
+        "email": data["email"],
+    }
+
+    if employee is None:
+        employee = Employee(
+            **fields,
+            hired_at=date.today(),
+            status=EmployeeStatus.active,
+            salary_type=SalaryType.fixed,
+        )
+        db.add(employee)
+        db.flush()
+    else:
+        for key, value in fields.items():
+            setattr(employee, key, value)
+
+    profile_data = data.get("doctor_profile")
+    if profile_data is not None:
+        profile = db.query(DoctorProfile).filter(DoctorProfile.employee_id == employee.id).first()
+        if profile is None:
+            db.add(DoctorProfile(employee_id=employee.id, **profile_data))
+        else:
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
+
+    return employee
+
+
+def _sync_user(db, email: str, full_name: str, employee_id: int, password: str) -> None:
+    user = db.query(User).filter(User.email == email).first()
     if user is None:
-        db.add(User(**USER_DATA, password_hash=hash_password(SEED_PASSWORD), doctor_id=doctor.id))
+        db.add(
+            User(
+                email=email,
+                full_name=full_name,
+                # role/UserRole снимаются в коммите 5 — до этого User.role
+                # по-прежнему NOT NULL, ставим ближайший по смыслу.
+                role=UserRole.doctor,
+                employee_id=employee_id,
+                password_hash=hash_password(password),
+            )
+        )
         return
 
-    user.full_name = USER_DATA["full_name"]
-    user.role = USER_DATA["role"]
-    user.doctor_id = doctor.id
-    user.password_hash = hash_password(SEED_PASSWORD)
+    user.full_name = full_name
+    user.employee_id = employee_id
+    user.password_hash = hash_password(password)
 
 
 def seed() -> None:
     db = SessionLocal()
     try:
-        doctor = _get_or_create_doctor(db)
-        _sync_user(db, doctor)
-        _sync_schedules(db, doctor)
-        _sync_education(db, doctor)
+        doctor_employee = _get_or_create_doctor_employee(db)
+        db.flush()
+        _sync_user(db, USER_DATA["email"], USER_DATA["full_name"], doctor_employee.id, SEED_PASSWORD)
+        _sync_schedules(db, doctor_employee)
+        _sync_education(db, doctor_employee.doctor_profile.id)
+
+        for role_key, data in NEW_EMPLOYEES_DATA.items():
+            employee = _get_or_create_new_employee(db, role_key, data)
+            db.flush()
+            _sync_user(db, data["email"], data["full_name"], employee.id, data["password"])
 
         patients_by_name: dict[str, Patient] = {}
         today = date.today()
@@ -476,15 +621,20 @@ def seed() -> None:
             patient = _get_or_create_patient(db, patient_name)
             patients_by_name[patient_name] = patient
             _sync_patient_diseases(db, patient)
-            _get_or_create_appointment(db, doctor, patient, today, item)
+            _get_or_create_appointment(db, doctor_employee.id, patient, today, item)
             _sync_patient_allergies(db, patient)
-            _sync_hospitalizations(db, doctor, patient)
+            _sync_hospitalizations(db, doctor_employee.id, patient)
             _sync_vaccinations(db, patient)
             _sync_health_metrics(db, patient)
 
         db.commit()
-        print(f"Готово: 1 врач, {len(patients_by_name)} пациентов, {len(APPOINTMENTS_DATA)} приёмов.")
-        print(f"Вход: {USER_DATA['email']} / {SEED_PASSWORD}")
+        print(
+            f"Готово: {1 + len(NEW_EMPLOYEES_DATA)} сотрудников, "
+            f"{len(patients_by_name)} пациентов, {len(APPOINTMENTS_DATA)} приёмов."
+        )
+        print(f"Вход (врач): {USER_DATA['email']} / {SEED_PASSWORD}")
+        for role_key, data in NEW_EMPLOYEES_DATA.items():
+            print(f"Вход ({role_key}): {data['email']} / {data['password']}")
     finally:
         db.close()
 

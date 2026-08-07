@@ -60,3 +60,7 @@ class Employee(Base):
     branch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     doctor_profile = relationship("DoctorProfile", back_populates="employee", uselist=False)
+    user = relationship("User", back_populates="employee", uselist=False)
+    appointments = relationship("Appointment", back_populates="employee")
+    hospitalizations = relationship("Hospitalization", back_populates="employee")
+    schedules = relationship("Schedule", back_populates="employee")

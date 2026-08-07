@@ -16,7 +16,7 @@ router = APIRouter()
 _PATIENT_LOAD_OPTIONS = (
     joinedload(Patient.diseases),
     joinedload(Patient.allergies),
-    joinedload(Patient.hospitalizations).joinedload(Hospitalization.doctor),
+    joinedload(Patient.hospitalizations).joinedload(Hospitalization.employee),
 )
 
 
@@ -92,7 +92,7 @@ def _serialize_patient(db: Session, patient: Patient) -> dict:
             "ward": hospitalization.ward or "",
             "bed": hospitalization.bed or "",
             "admittedAt": hospitalization.admitted_at.strftime("%d.%m.%Y"),
-            "attendingDoctor": hospitalization.doctor.short_name,
+            "attendingDoctor": hospitalization.employee.short_name,
             "primaryDiagnosis": hospitalization.primary_diagnosis or "",
         }
 
@@ -105,7 +105,7 @@ def _serialize_history_entry(appointment: Appointment) -> dict:
         "patientId": str(appointment.patient_id),
         "date": appointment.date.strftime("%d.%m.%Y"),
         "time": appointment.time,
-        "doctor": appointment.doctor.short_name,
+        "doctor": appointment.employee.short_name,
         "status": appointment.status.value,
         "complaint": appointment.complaint,
         "diagnosis": appointment.diagnosis,
@@ -298,7 +298,7 @@ def get_patient_history(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
     rows = (
         db.query(Appointment)
-        .options(joinedload(Appointment.doctor))
+        .options(joinedload(Appointment.employee))
         .filter(Appointment.patient_id == patient_id)
         .order_by(Appointment.date.desc(), Appointment.time.desc())
         .all()

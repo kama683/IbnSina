@@ -25,3 +25,8 @@ class DoctorProfile(Base):
     experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     employee = relationship("Employee", back_populates="doctor_profile")
+    education_entries = relationship(
+        "DoctorEducation",
+        back_populates="doctor_profile",
+        order_by="DoctorEducation.year",
+    )

@@ -6,7 +6,7 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id: Mapped[int] = mapped_column(primary_key = True)
-    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), index=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
 
     day_id: Mapped[str] = mapped_column(String(10), nullable=False)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -14,4 +14,4 @@ class Schedule(Base):
     start: Mapped[str] = mapped_column(String(10), nullable=False)
     end: Mapped[str] = mapped_column(String(10), nullable=False)
 
-    doctor = relationship("Doctor", back_populates="schedules")
+    employee = relationship("Employee", back_populates="schedules")
