@@ -5,19 +5,28 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.employee import Employee, EmployeeRole, EmployeeStatus
 from app.models.user import User
-from app.security import decode_access_token
+from app.security import ACCESS_TOKEN_COOKIE_NAME, decode_access_token
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    if credentials is None:
+    """Принимает токен и как `Authorization: Bearer` (нужно RSC-запросам с
+    сервера Next.js — httpOnly-cookie им приходится пересылать явным
+    заголовком), и как httpOnly-cookie (нужно прямым браузерным запросам
+    после коммита 7 — фронт ещё шлёт Bearer по старинке до коммита 10, но
+    бэкенд с этого коммита понимает оба пути)."""
+    token = credentials.credentials if credentials is not None else request.cookies.get(
+        ACCESS_TOKEN_COOKIE_NAME
+    )
+    if token is None:
         raise HTTPException(status_code=401, detail="Не авторизован")
 
-    email = decode_access_token(credentials.credentials)
+    email = decode_access_token(token)
     if email is None:
         raise HTTPException(status_code=401, detail="Недействительный или просроченный токен")
 

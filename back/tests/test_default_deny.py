@@ -15,6 +15,12 @@ from app.main import app
 # Единственные сознательно публичные маршруты Этапа 0.
 PUBLIC_WHITELIST = {
     ("POST", "/api/auth/login"),
+    # /refresh работает по refresh-cookie, а не по access-токену — иначе
+    # его вообще нельзя было бы вызвать после истечения access-токена.
+    ("POST", "/api/auth/refresh"),
+    # /logout должен отрабатывать и с уже истёкшим access-токеном — его
+    # единственная задача — отозвать refresh, если он есть в cookie.
+    ("POST", "/api/auth/logout"),
 }
 
 

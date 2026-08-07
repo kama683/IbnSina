@@ -6,7 +6,13 @@ class Settings(BaseSettings):
     api_port: int = 8000
     cors_origins: str = "http://localhost:3000"
     secret_key: str
-    access_token_expire_minutes: int = 60 * 24 * 7
+    # Этап 0, коммит 7: короткий access (15 мин) + отдельный refresh (30 дней)
+    # вместо единственного 7-дневного токена. Старое имя переменной сохранено
+    # (это концептуально та же настройка — время жизни access-токена), но
+    # старое значение 10080 полностью выведено из употребления — см. решение
+    # по вопросу 6 в docs/PHASE0_ANALYSIS.md.
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 30
 
     class Config:
         env_file = ".env"

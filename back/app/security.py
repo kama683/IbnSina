@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -6,6 +8,11 @@ import jwt
 from app.config import settings
 
 ALGORITHM = "HS256"
+
+# Имена cookie — общие для auth.py (Set-Cookie) и deps.py (чтение).
+ACCESS_TOKEN_COOKIE_NAME = "access_token"
+REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
+REFRESH_TOKEN_COOKIE_PATH = "/api/auth"
 
 
 def hash_password(password: str) -> str:
@@ -30,3 +37,16 @@ def decode_access_token(token: str) -> str | None:
     except jwt.PyJWTError:
         return None
     return payload.get("sub")
+
+
+def generate_refresh_token() -> str:
+    """Непрозрачный случайный токен — не JWT. Хранится в БД только его хеш
+    (hash_refresh_token), сам токен живёт только в httpOnly-cookie клиента."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    # sha256, не bcrypt: refresh-токен и так высокоэнтропийный случайный
+    # секрет (не пароль пользователя), а хеш нужно быстро найти точным
+    # совпадением по индексу — bcrypt для этого не подходит (соль на запись).
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
