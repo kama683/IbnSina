@@ -9,6 +9,12 @@ class UserRole(str, enum.Enum):
     doctor = "doctor"
     admin = "admin"
     nurse = "nurse"
+    # Добавлено в Этапе 0 (коммит 3) вслед за расширением Postgres-enum'а
+    # user_role — готовим Python-сторону под роли из Employee, окончательно
+    # role/UserRole снимаются в коммите 5.
+    reception = "reception"
+    accountant = "accountant"
+    head_doctor = "head_doctor"
 
 class User(Base):
     __tablename__ = "users"
