@@ -3,26 +3,34 @@
  *
  * Все HTTP-вызовы к API должны идти через этот файл (или функции из lib/api/*),
  * а не через голый fetch в компонентах — так проще менять URL, ловить ошибки и типизировать ответы.
+ *
+ * Этап 0, коммит 10: токен больше не читается/не пишется на клиенте (он в
+ * httpOnly-cookie, JS до него не дотягивается — в этом весь смысл httpOnly).
+ * Браузер сам прикладывает cookie к запросу благодаря credentials:"include"
+ * (CORS настроен на allow_credentials=True и точный origin, не "*", иначе
+ * это не сработало бы). На сервере (RSC) браузера нет — cookie приходится
+ * читать явно через next/headers и пересылать Authorization-заголовком.
  */
 
-import { clearAuthToken, getAuthToken } from "./token";
+import { serverAuthHeader } from "./server-auth";
 
 // Адрес бэкенда из .env.local; fallback на localhost для локальной разработки
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = await getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 function handleUnauthorized(status: number): void {
   if (status !== 401) return;
   if (typeof window === "undefined") return;
-  clearAuthToken();
-  if (window.location.pathname !== "/login") {
+  if (window.location.pathname === "/login") return;
+
+  // httpOnly-cookie нельзя стереть из JS — просим бэкенд сделать это сам
+  // (заодно отзовёт refresh-токен) и уходим на /login.
+  fetch(`${API_URL}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  }).finally(() => {
     window.location.href = "/login";
-  }
+  });
 }
 
 /**
@@ -37,38 +45,6 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
-}
-
-/**
- * Универсальный GET-запрос к API.
- *
- * @param path — путь без домена, например "/api/doctors/me"
- * @param init — опции fetch (кэш Next.js, заголовки и т.д.)
- * @returns распарсенный JSON с типом T
- */
-export async function apiGet<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
-  // Склеиваем базовый URL и путь эндпоинта
-  const url = `${API_URL}${path}`;
-
-  const response = await fetch(url, {
-    // Пробрасываем остальные опции (cache, next.revalidate и т.д.)
-    ...init,
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      ...(await authHeaders()),
-      ...init?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    await parseApiError(response);
-  }
-
-  return response.json() as Promise<T>;
 }
 
 async function parseApiError(response: Response): Promise<never> {
@@ -89,6 +65,37 @@ async function parseApiError(response: Response): Promise<never> {
 }
 
 /**
+ * Универсальный GET-запрос к API.
+ *
+ * @param path — путь без домена, например "/api/employees/me"
+ * @param init — опции fetch (кэш Next.js, заголовки и т.д.)
+ * @returns распарсенный JSON с типом T
+ */
+export async function apiGet<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const url = `${API_URL}${path}`;
+
+  const response = await fetch(url, {
+    ...init,
+    method: "GET",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(await serverAuthHeader()),
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    await parseApiError(response);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+/**
  * PATCH-запрос к API (сохранение форм, обновление записей).
  */
 export async function apiPatch<T>(
@@ -101,10 +108,11 @@ export async function apiPatch<T>(
   const response = await fetch(url, {
     ...init,
     method: "PATCH",
+    credentials: "include",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(await authHeaders()),
+      ...(await serverAuthHeader()),
       ...init?.headers,
     },
     body: JSON.stringify(body),
@@ -130,10 +138,11 @@ export async function apiPost<T>(
   const response = await fetch(url, {
     ...init,
     method: "POST",
+    credentials: "include",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      ...(await authHeaders()),
+      ...(await serverAuthHeader()),
       ...init?.headers,
     },
     body: JSON.stringify(body),

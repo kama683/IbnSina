@@ -5,9 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Activity } from "lucide-react";
 import { ApiError } from "@/lib/api/api";
 import { login } from "@/lib/api/auth";
-import { setAuthToken } from "@/lib/api/token";
-
-const TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export default function LoginForm() {
   const router = useRouter();
@@ -22,8 +19,9 @@ export default function LoginForm() {
     setSubmitting(true);
     setError(null);
     try {
-      const { accessToken } = await login(email, password);
-      setAuthToken(accessToken, TOKEN_MAX_AGE_SECONDS);
+      // Этап 0, коммит 10: бэкенд сам ставит httpOnly-cookie тем же ответом
+      // (credentials:"include" в api.ts) — вручную сохранять токен не нужно.
+      await login(email, password);
       const next = searchParams.get("next") || "/";
       router.push(next);
       router.refresh();

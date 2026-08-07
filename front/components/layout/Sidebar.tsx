@@ -12,8 +12,8 @@ import {
   LogOut,
   UserRound,
 } from "lucide-react";
+import { logout } from "@/lib/api/auth";
 import type { Employee } from "@/lib/api/employees";
-import { clearAuthToken } from "@/lib/api/token";
 import { NAV_ITEMS, ROLE_LABELS, isRoleAllowed, type NavItemConfig } from "@/lib/roles";
 
 type SidebarProps = {
@@ -33,10 +33,17 @@ export default function Sidebar({ employee }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  function handleLogout() {
-    clearAuthToken();
-    router.push("/login");
-    router.refresh();
+  async function handleLogout() {
+    // httpOnly-cookie нельзя стереть из JS — только бэкенд может (заодно
+    // отзовёт refresh-токен). Если сам запрос не удался (например, сеть
+    // отвалилась) — всё равно уходим на /login, терять пользователя тут
+    // хуже, чем не отозвать токен идеально.
+    try {
+      await logout();
+    } finally {
+      router.push("/login");
+      router.refresh();
+    }
   }
 
   const items = NAV_ITEMS.filter((item) => isRoleAllowed(employee.role, item.roles));
