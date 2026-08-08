@@ -245,3 +245,59 @@ def test_available_slots_excludes_booked_and_returns_empty_on_disabled_day(clien
         headers=headers,
     )
     assert response.json() == ["09:30"], "занятый слот должен пропасть из списка"
+
+
+def test_cancelled_appointment_frees_its_slot(client, db_session):
+    """Добор-тест Этапа 1 (коммит 13) — decision C, §6.1 плана: слот
+    считается занятым только активными (не cancelled) приёмами, иначе
+    available-slots предложил бы слот, который на самом деле свободен."""
+    doctor = _make_employee(
+        db_session, email="slots-cancel-doctor@test.local", role=EmployeeRole.doctor, with_profile=True
+    )
+    reception = _make_employee(
+        db_session, email="slots-cancel-reception@test.local", role=EmployeeRole.reception, with_profile=False
+    )
+    monday = _next_weekday("mon")
+    db_session.add(
+        Schedule(
+            employee_id=doctor.id, day_id="mon", label="Понедельник",
+            enabled=True, start="09:00", end="09:30",
+        )
+    )
+    db_session.commit()
+    patient_id = _make_patient(db_session, iin="900101300116")
+
+    headers = _login(client, "slots-cancel-reception@test.local")
+
+    booked = client.post(
+        "/api/appointments",
+        headers=headers,
+        json={
+            "patientId": patient_id,
+            "employeeId": doctor.id,
+            "date": monday.isoformat(),
+            "time": "09:00",
+            "complaint": "Жалоба",
+        },
+    )
+    assert booked.status_code == 200, booked.text
+    appointment_id = booked.json()["id"]
+
+    before_cancel = client.get(
+        f"/api/appointments/available-slots?employeeId={doctor.id}&date={monday.isoformat()}",
+        headers=headers,
+    )
+    assert before_cancel.json() == [], "единственный слот занят до отмены"
+
+    cancelled = client.patch(
+        f"/api/appointments/{appointment_id}",
+        headers=headers,
+        json={"status": "cancelled"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+
+    after_cancel = client.get(
+        f"/api/appointments/available-slots?employeeId={doctor.id}&date={monday.isoformat()}",
+        headers=headers,
+    )
+    assert after_cancel.json() == ["09:00"], "отменённый приём должен освобождать слот"
