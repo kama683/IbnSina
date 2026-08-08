@@ -28,8 +28,10 @@ _VIEW_STATS = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
 # исключения из Этапа 0 (там сама причина исключения была «нет выбора врача»,
 # см. историю коммита e6f7a8b9c0d1/f7a8b9c0d1e2). Роль не ограничивает, КОМУ
 # именно можно записать — это делает _get_bookable_employee_or_404 ниже
-# (только активные с doctor_profile), одинаково для всех трёх ролей.
-_CREATE_APPOINTMENT = require_roles(
+# (только активные с doctor_profile), одинаково для всех трёх ролей. Те же
+# роли — у превью доступных слотов (коммит 4, решение C §6.1): это те, кто
+# вообще может записывать на приём, а не отдельная категория прав.
+_MULTI_DOCTOR_BOOKING = require_roles(
     EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.head_doctor
 )
 # Осмотр/диагноз/назначения — только тот, кто ведёт приём.
@@ -60,25 +62,43 @@ def _get_bookable_employee_or_404(db: Session, employee_id: int) -> Employee:
     return employee
 
 
-def _assert_within_working_hours(db: Session, employee_id: int, appt_date: date, time: str) -> None:
-    """Жёсткий reject вне графика (§6 п.6): считаем окно графика на этот
-    день недели и сравниваем как строки "HH:MM" — при одинаковой длине это
-    эквивалентно сравнению времени. Источник истины и для превью слотов
-    (GET /available-slots, коммит 4), и здесь — коммит 4 не должен позволить
-    предложить слот, который потом даст 400 при создании."""
+def _get_enabled_schedule_for_date(db: Session, employee_id: int, appt_date: date) -> Schedule | None:
     day_id = _WEEKDAY_TO_DAY_ID[appt_date.weekday()]
     schedule = (
         db.query(Schedule)
         .filter(Schedule.employee_id == employee_id, Schedule.day_id == day_id)
         .first()
     )
-    if schedule is None or not schedule.enabled:
+    return schedule if schedule is not None and schedule.enabled else None
+
+
+def _assert_within_working_hours(db: Session, employee_id: int, appt_date: date, time: str) -> None:
+    """Жёсткий reject вне графика (§6 п.6) — сравниваем "HH:MM" как строки,
+    при одинаковой длине это эквивалентно сравнению времени. Источник
+    истины общий с GET /available-slots (_get_enabled_schedule_for_date) —
+    коммит 4 не должен позволить предложить слот, который потом даст 400
+    при создании (решение C, §6.1)."""
+    schedule = _get_enabled_schedule_for_date(db, employee_id, appt_date)
+    if schedule is None:
         raise HTTPException(status_code=400, detail="Врач не принимает в этот день недели")
     if not (schedule.start <= time < schedule.end):
         raise HTTPException(
             status_code=400,
             detail=f"Время вне рабочих часов врача ({schedule.start}–{schedule.end})",
         )
+
+
+def _generate_time_grid(start: str, end: str, step_minutes: int = 30) -> list[str]:
+    start_h, start_m = (int(part) for part in start.split(":"))
+    end_h, end_m = (int(part) for part in end.split(":"))
+    current = start_h * 60 + start_m
+    end_total = end_h * 60 + end_m
+
+    slots = []
+    while current < end_total:
+        slots.append(f"{current // 60:02d}:{current % 60:02d}")
+        current += step_minutes
+    return slots
 
 MONTHS_GENITIVE = [
     "января",
@@ -270,11 +290,40 @@ def get_current_appointment(db: Session = Depends(get_db)):
     return _serialize_appointment(row)
 
 
+@router.get("/available-slots", dependencies=[Depends(_MULTI_DOCTOR_BOOKING)])
+def get_available_slots(
+    employee_id: int = Query(..., alias="employeeId"),
+    target_date: date = Query(..., alias="date"),
+    db: Session = Depends(get_db),
+):
+    """Превью для формы записи (§6 п.6, решение C) — не источник истины:
+    POST /appointments всё равно пересчитывает и проверяет сам
+    (_assert_within_working_hours + конфликт-чек), клиенту не доверяем.
+    Занятые слоты — активные (не cancelled) приёмы на эту дату/врача, чтобы
+    отменённый приём освобождал слот."""
+    _get_bookable_employee_or_404(db, employee_id)
+
+    schedule = _get_enabled_schedule_for_date(db, employee_id, target_date)
+    if schedule is None:
+        return []
+
+    all_slots = _generate_time_grid(schedule.start, schedule.end)
+    booked = {
+        row.time
+        for row in db.query(Appointment.time).filter(
+            Appointment.employee_id == employee_id,
+            Appointment.date == target_date,
+            Appointment.status != AppointmentStatus.cancelled,
+        )
+    }
+    return [slot for slot in all_slots if slot not in booked]
+
+
 @router.post("")
 def create_appointment(
     payload: AppointmentCreateIn,
     db: Session = Depends(get_db),
-    current_employee: Employee = Depends(_CREATE_APPOINTMENT),
+    current_employee: Employee = Depends(_MULTI_DOCTOR_BOOKING),
 ):
     patient = db.query(Patient).filter(Patient.id == payload.patient_id).first()
     if not patient:

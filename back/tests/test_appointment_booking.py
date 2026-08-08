@@ -187,3 +187,61 @@ def test_booking_to_employee_without_doctor_profile_is_rejected(client, db_sessi
         },
     )
     assert response.status_code == 404
+
+
+def test_available_slots_excludes_booked_and_returns_empty_on_disabled_day(client, db_session):
+    doctor = _make_employee(
+        db_session, email="slots-doctor@test.local", role=EmployeeRole.doctor, with_profile=True
+    )
+    reception = _make_employee(
+        db_session, email="slots-reception@test.local", role=EmployeeRole.reception, with_profile=False
+    )
+    monday = _next_weekday("mon")
+    tuesday = _next_weekday("tue")
+    db_session.add_all([
+        Schedule(
+            employee_id=doctor.id, day_id="mon", label="Понедельник",
+            enabled=True, start="09:00", end="10:00",
+        ),
+        Schedule(
+            employee_id=doctor.id, day_id="tue", label="Вторник",
+            enabled=False, start="09:00", end="10:00",
+        ),
+    ])
+    db_session.commit()
+    patient_id = _make_patient(db_session, iin="900101300115")
+
+    headers = _login(client, "slots-reception@test.local")
+
+    response = client.get(
+        f"/api/appointments/available-slots?employeeId={doctor.id}&date={tuesday.isoformat()}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json() == [], "выключенный день — пустой список, не ошибка"
+
+    response = client.get(
+        f"/api/appointments/available-slots?employeeId={doctor.id}&date={monday.isoformat()}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json() == ["09:00", "09:30"]
+
+    booked = client.post(
+        "/api/appointments",
+        headers=headers,
+        json={
+            "patientId": patient_id,
+            "employeeId": doctor.id,
+            "date": monday.isoformat(),
+            "time": "09:00",
+            "complaint": "Жалоба",
+        },
+    )
+    assert booked.status_code == 200, booked.text
+
+    response = client.get(
+        f"/api/appointments/available-slots?employeeId={doctor.id}&date={monday.isoformat()}",
+        headers=headers,
+    )
+    assert response.json() == ["09:30"], "занятый слот должен пропасть из списка"

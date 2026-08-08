@@ -96,6 +96,8 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.reception, R.doctor, R.nurse, R.head_doctor})),
     ("GET", "/api/appointments/current",
      frozenset({R.reception, R.doctor, R.nurse, R.head_doctor})),
+    ("GET", "/api/appointments/available-slots?employeeId=1&date=2026-08-10",
+     frozenset({R.reception, R.doctor, R.head_doctor})),
     ("POST", "/api/appointments",
      frozenset({R.reception, R.doctor, R.head_doctor})),
     ("PATCH", "/api/appointments/1",
