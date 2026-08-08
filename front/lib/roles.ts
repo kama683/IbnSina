@@ -50,6 +50,11 @@ export const ANY_STAFF_ROLES: EmployeeRole[] = [
 // одной лишь роли, см. AppointmentActions.tsx.
 export const MANAGE_ANY_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "head_doctor"];
 
+// Этап 1, коммит 10 (docs/PHASE1_ANALYSIS.md §6 п.2, решение по §5.2) — чек-ин
+// на живой очереди ("Начать"/"Завершить"). = _MANAGE_EXAMINATION в
+// appointments.py — права не расширяем, reception/nurse только смотрят.
+export const CHECK_IN_ROLES: EmployeeRole[] = ["doctor", "head_doctor"];
+
 export type NavItemConfig = {
   href: string;
   label: string;

@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import AppointmentActions from "@/components/appointments/AppointmentActions";
+import RoleGate from "@/components/auth/RoleGate";
 import {
   getQueueAppointments,
   updateAppointmentStatus,
 } from "@/lib/api/appointments";
 import type { EmployeeRole } from "@/lib/api/employees";
+import { CHECK_IN_ROLES } from "@/lib/roles";
 import type { Appointment } from "@/lib/types";
 
 type Props = {
@@ -117,16 +119,18 @@ export default function QueueContent({
                     <td className="px-5 py-3">
                       <div className="flex flex-wrap gap-2">
                         {appointment.status === "scheduled" && (
-                          <button
-                            type="button"
-                            disabled={loadingId === appointment.id}
-                            onClick={() =>
-                              handleStatusChange(appointment, "in_progress")
-                            }
-                            className="rounded-lg bg-[#1a5c3a] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#14472e] disabled:opacity-50"
-                          >
-                            Начать
-                          </button>
+                          <RoleGate role={currentEmployeeRole} allow={CHECK_IN_ROLES}>
+                            <button
+                              type="button"
+                              disabled={loadingId === appointment.id}
+                              onClick={() =>
+                                handleStatusChange(appointment, "in_progress")
+                              }
+                              className="rounded-lg bg-[#1a5c3a] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#14472e] disabled:opacity-50"
+                            >
+                              Начать
+                            </button>
+                          </RoleGate>
                         )}
                         {appointment.status === "in_progress" && (
                           <>
@@ -136,16 +140,18 @@ export default function QueueContent({
                             >
                               Осмотр
                             </Link>
-                            <button
-                              type="button"
-                              disabled={loadingId === appointment.id}
-                              onClick={() =>
-                                handleStatusChange(appointment, "completed")
-                              }
-                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-                            >
-                              Завершить
-                            </button>
+                            <RoleGate role={currentEmployeeRole} allow={CHECK_IN_ROLES}>
+                              <button
+                                type="button"
+                                disabled={loadingId === appointment.id}
+                                onClick={() =>
+                                  handleStatusChange(appointment, "completed")
+                                }
+                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                Завершить
+                              </button>
+                            </RoleGate>
                           </>
                         )}
                         <AppointmentActions
