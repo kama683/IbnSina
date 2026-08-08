@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import appointments, auth, employees, icd10, patients, search
+from app.routers import appointments, auth, employees, icd10, patients, search, services
 app = FastAPI(title="IbnSina Api", version="1.0.0")
 
 app.add_middleware(
@@ -23,6 +23,7 @@ app.include_router(appointments.router, prefix="/api/appointments", tags=["appoi
 app.include_router(patients.router, prefix="/api/patients", tags=["patients"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(icd10.router, prefix="/api/icd10", tags=["icd10"])
+app.include_router(services.router, prefix="/api/services", tags=["services"])
 
 
 @app.get("/health")

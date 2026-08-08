@@ -17,6 +17,7 @@ from app.models import (  # noqa: F401
     Prescription,
     RefreshToken,
     Schedule,
+    Service,
     User,
     Vaccination,
     HealthMetric,

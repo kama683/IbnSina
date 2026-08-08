@@ -134,6 +134,14 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
     ("GET", "/api/employees/me", frozenset(_ALL_ROLES)),
     ("GET", "/api/employees/me/profile", frozenset(_ALL_ROLES)),
     ("PATCH", "/api/employees/me", frozenset(_ALL_ROLES)),
+    # Этап 2, коммит 1 (docs/PHASE2_ANALYSIS.md §6, решение A) — accountant
+    # вне доступа даже к прейскуранту, не только к счетам/платежам.
+    ("GET", "/api/services",
+     frozenset({R.reception, R.doctor, R.nurse, R.head_doctor})),
+    ("POST", "/api/services",
+     frozenset({R.head_doctor})),
+    ("PATCH", "/api/services/1",
+     frozenset({R.head_doctor})),
 ]
 
 
