@@ -18,6 +18,7 @@ from app.models.cash_shift import CashShift, CashShiftStatus
 from app.models.invoice_number_counter import InvoiceNumberCounter
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_item import InvoiceItem
+from app.models.payment import Payment, PaymentMethod
 
 __all__ = [
     "DoctorEducation",
@@ -48,4 +49,6 @@ __all__ = [
     "Invoice",
     "InvoiceStatus",
     "InvoiceItem",
+    "Payment",
+    "PaymentMethod",
 ]

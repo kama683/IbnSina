@@ -165,6 +165,11 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.reception, R.head_doctor})),
     ("POST", "/api/invoices/1/approve-discount",
      frozenset({R.head_doctor})),
+    # Этап 2, коммит 4.
+    ("GET", "/api/invoices/1/payments",
+     frozenset({R.reception, R.head_doctor})),
+    ("POST", "/api/invoices/1/payments",
+     frozenset({R.reception, R.head_doctor})),
 ]
 
 

@@ -7,12 +7,15 @@ from sqlalchemy.orm import Session, joinedload
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_employee, require_roles
+from app.models.cash_shift import CashShift, CashShiftStatus
 from app.models.employee import Employee, EmployeeRole
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_item import InvoiceItem
 from app.models.patient import Patient
+from app.models.payment import Payment, PaymentMethod
 from app.models.service import Service
 from app.schemas.invoice import InvoiceCancelIn, InvoiceCreateIn, InvoiceItemsUpdateIn
+from app.schemas.payment import PaymentCreateIn
 from app.services.audit import record_audit
 
 router = APIRouter()
@@ -348,3 +351,126 @@ def cancel_invoice(
     db.commit()
 
     return serialize_invoice(_get_invoice_or_404(db, invoice_id))
+
+
+def serialize_payment(payment: Payment) -> dict:
+    return {
+        "id": payment.id,
+        "invoiceId": payment.invoice_id,
+        "amount": payment.amount,
+        "method": payment.method.value,
+        "cashShiftId": payment.cash_shift_id,
+        "createdBy": payment.created_by.short_name if payment.created_by else None,
+        "createdAt": payment.created_at.isoformat(),
+        "reversalOfPaymentId": payment.reversal_of_payment_id,
+        "refundReason": payment.refund_reason,
+        "approvedBy": payment.approved_by.short_name if payment.approved_by else None,
+    }
+
+
+def _recompute_invoice_status_from_payments(db: Session, invoice: Invoice) -> None:
+    """Решение E (§6 плана) — статус счёта не отдельная ветка на "возврат",
+    а всегда пересчёт по факту net_paid. Один и тот же путь для обычной
+    оплаты и для возврата (коммит 6), меньше шансов разойтись."""
+    net_paid = (
+        db.query(Payment)
+        .filter(Payment.invoice_id == invoice.id)
+        .with_entities(Payment.amount)
+        .all()
+    )
+    total_paid = sum(row[0] for row in net_paid)
+    if total_paid <= 0:
+        invoice.status = InvoiceStatus.refunded
+    elif total_paid < invoice.total:
+        invoice.status = InvoiceStatus.partial
+    else:
+        invoice.status = InvoiceStatus.paid
+
+
+@router.get("/{invoice_id}/payments", dependencies=[Depends(_MANAGE_INVOICE)])
+def list_payments(invoice_id: int, db: Session = Depends(get_db)):
+    _get_invoice_or_404(db, invoice_id)
+    payments = (
+        db.query(Payment)
+        .options(joinedload(Payment.created_by), joinedload(Payment.approved_by))
+        .filter(Payment.invoice_id == invoice_id)
+        .order_by(Payment.created_at)
+        .all()
+    )
+    return [serialize_payment(payment) for payment in payments]
+
+
+@router.post("/{invoice_id}/payments", dependencies=[Depends(_MANAGE_INVOICE)])
+def create_payment(
+    invoice_id: int,
+    payload: PaymentCreateIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    invoice = _get_invoice_or_404(db, invoice_id)
+    if invoice.status not in (InvoiceStatus.unpaid, InvoiceStatus.partial):
+        raise HTTPException(
+            status_code=409, detail="Оплата принимается только у выставленного счёта"
+        )
+
+    already_paid = (
+        db.query(Payment)
+        .filter(Payment.invoice_id == invoice_id)
+        .with_entities(Payment.amount)
+        .all()
+    )
+    total_paid = sum(row[0] for row in already_paid)
+    # Решение G (§6 плана) — овердрафт запрещён: оплата сверх суммы счёта
+    # отклоняется, а не тихо создаёт "переплату" без механизма её показать.
+    if total_paid + payload.amount > invoice.total:
+        raise HTTPException(
+            status_code=409, detail="Сумма оплаты превышает остаток по счёту"
+        )
+
+    cash_shift_id = None
+    if payload.method == PaymentMethod.cash:
+        open_shift = (
+            db.query(CashShift)
+            .filter(
+                CashShift.cashier_employee_id == current_employee.id,
+                CashShift.status == CashShiftStatus.open,
+            )
+            .first()
+        )
+        if open_shift is None:
+            raise HTTPException(
+                status_code=409, detail="Нет открытой кассовой смены — откройте смену"
+            )
+        cash_shift_id = open_shift.id
+
+    payment = Payment(
+        invoice_id=invoice_id,
+        amount=payload.amount,
+        method=payload.method,
+        cash_shift_id=cash_shift_id,
+        created_by_id=current_employee.id,
+    )
+    db.add(payment)
+    db.flush()
+
+    _recompute_invoice_status_from_payments(db, invoice)
+
+    record_audit(
+        db,
+        actor_user_id=current_employee.user.id if current_employee.user else None,
+        entity_type="payment",
+        entity_id=payment.id,
+        action="create",
+        changes={"amount": payload.amount, "method": payload.method.value},
+        request=request,
+    )
+    db.commit()
+
+    payment = (
+        db.query(Payment)
+        .options(joinedload(Payment.created_by), joinedload(Payment.approved_by))
+        .filter(Payment.id == payment.id)
+        .first()
+    )
+    return serialize_payment(payment)
