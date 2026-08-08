@@ -6,6 +6,7 @@ import AppointmentsToolbar from "@/components/appointments/AppointmentsToolbar";
 import AppointmentsTable from "@/components/appointments/AppointmentsTable";
 import AppointmentsCalendar from "@/components/appointments/AppointmentsCalendar";
 import { getAppointmentsInRange } from "@/lib/api/appointments";
+import type { EmployeeRole } from "@/lib/api/employees";
 import type { Appointment, Patient } from "@/lib/types";
 import type { CalendarWeek } from "@/lib/calendar-utils";
 
@@ -24,6 +25,8 @@ type Props = {
   doctorOffice: string;
   weekOffset: number;
   patients: Patient[];
+  currentEmployeeId: number;
+  currentEmployeeRole: EmployeeRole;
 };
 
 export default function AppointmentsContent({
@@ -34,6 +37,8 @@ export default function AppointmentsContent({
   doctorOffice,
   weekOffset,
   patients,
+  currentEmployeeId,
+  currentEmployeeRole,
 }: Props) {
   const router = useRouter();
   const [view, setView] = useState<"list" | "calendar">("list");
@@ -68,7 +73,11 @@ export default function AppointmentsContent({
         onAppointmentCreated={() => router.refresh()}
       />
       {view === "list" ? (
-        <AppointmentsTable appointments={filteredList} />
+        <AppointmentsTable
+          appointments={filteredList}
+          currentEmployeeId={currentEmployeeId}
+          currentEmployeeRole={currentEmployeeRole}
+        />
       ) : (
         <AppointmentsCalendar
           appointments={calendarAppointments}

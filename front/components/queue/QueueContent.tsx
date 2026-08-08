@@ -4,17 +4,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
+import AppointmentActions from "@/components/appointments/AppointmentActions";
 import {
   getQueueAppointments,
   updateAppointmentStatus,
 } from "@/lib/api/appointments";
+import type { EmployeeRole } from "@/lib/api/employees";
 import type { Appointment } from "@/lib/types";
 
 type Props = {
   initialAppointments: Appointment[];
+  currentEmployeeId: number;
+  currentEmployeeRole: EmployeeRole;
 };
 
-export default function QueueContent({ initialAppointments }: Props) {
+export default function QueueContent({
+  initialAppointments,
+  currentEmployeeId,
+  currentEmployeeRole,
+}: Props) {
   const router = useRouter();
   const [appointments, setAppointments] = useState(initialAppointments);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -140,6 +148,12 @@ export default function QueueContent({ initialAppointments }: Props) {
                             </button>
                           </>
                         )}
+                        <AppointmentActions
+                          appointment={appointment}
+                          currentEmployeeId={currentEmployeeId}
+                          currentEmployeeRole={currentEmployeeRole}
+                          onChanged={refreshQueue}
+                        />
                       </div>
                     </td>
                   </tr>

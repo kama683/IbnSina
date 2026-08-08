@@ -45,12 +45,35 @@ export function getQueueAppointments(): Promise<Appointment[]> {
   return apiGet<Appointment[]>("/api/appointments/queue");
 }
 
-/** Смена статуса приёма (начать / завершить / отменить). */
+/** Смена статуса приёма (начать / завершить). */
 export function updateAppointmentStatus(
   id: string,
   status: Appointment["status"],
 ): Promise<Appointment> {
   return apiPatch<Appointment>(`/api/appointments/${id}`, { status });
+}
+
+/** Этап 1, коммит 9 (docs/PHASE1_ANALYSIS.md §6 п.3) — отмена приёма.
+ * Права проверяет бэкенд (reception/head_doctor — любой, врач — только
+ * свой, коммит 5); здесь только сам вызов. */
+export function cancelAppointment(
+  id: string,
+  cancellationReason: string,
+): Promise<Appointment> {
+  return apiPatch<Appointment>(`/api/appointments/${id}`, {
+    status: "cancelled",
+    cancellationReason,
+  });
+}
+
+/** Перенос приёма — правка даты/времени той же записи (не отмена+создание),
+ * бэкенд пересчитывает график и конфликт-чек заново. */
+export function rescheduleAppointment(
+  id: string,
+  date: string,
+  time: string,
+): Promise<Appointment> {
+  return apiPatch<Appointment>(`/api/appointments/${id}`, { date, time });
 }
 
 /** Этап 1, коммит 8 (docs/PHASE1_ANALYSIS.md §6 п.6) — превью слотов для

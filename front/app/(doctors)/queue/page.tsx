@@ -46,7 +46,11 @@ export default async function QueuePage() {
         </h1>
       </div>
 
-      <QueueContent initialAppointments={appointments} />
+      <QueueContent
+        initialAppointments={appointments}
+        currentEmployeeId={employee.id}
+        currentEmployeeRole={employee.role}
+      />
     </div>
   );
 }

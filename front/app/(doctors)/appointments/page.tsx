@@ -84,6 +84,8 @@ export default async function AppointmentsPage({ searchParams }: Props) {
         doctorOffice={office}
         weekOffset={weekOffset}
         patients={patientsPage.items}
+        currentEmployeeId={employee.id}
+        currentEmployeeRole={employee.role}
       />
     </div>
   );

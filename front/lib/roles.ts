@@ -44,6 +44,12 @@ export const ANY_STAFF_ROLES: EmployeeRole[] = [
   "head_doctor",
 ];
 
+// Этап 1, коммит 9 (docs/PHASE1_ANALYSIS.md §6 п.3) — кто может отменить/
+// перенести ЛЮБОЙ приём (не только свой). Назначенный врач тоже может, но
+// только свой — это отдельная проверка по appointment.employeeId, не по
+// одной лишь роли, см. AppointmentActions.tsx.
+export const MANAGE_ANY_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "head_doctor"];
+
 export type NavItemConfig = {
   href: string;
   label: string;

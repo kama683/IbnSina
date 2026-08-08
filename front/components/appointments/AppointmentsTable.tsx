@@ -1,13 +1,25 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import StatusBadge from "@/components/ui/StatusBadge";
+import AppointmentActions from "@/components/appointments/AppointmentActions";
+import type { EmployeeRole } from "@/lib/api/employees";
 import type { Appointment } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 
 type Props = {
   appointments: Appointment[];
+  currentEmployeeId: number;
+  currentEmployeeRole: EmployeeRole;
 };
 
-export default function AppointmentsTable({ appointments }: Props) {
+export default function AppointmentsTable({
+  appointments,
+  currentEmployeeId,
+  currentEmployeeRole,
+}: Props) {
+  const router = useRouter();
   return (
     <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -21,6 +33,7 @@ export default function AppointmentsTable({ appointments }: Props) {
               <th className="px-5 py-2.5">Диагноз</th>
               <th className="px-5 py-2.5">Врач</th>
               <th className="px-5 py-2.5">Статус</th>
+              <th className="px-5 py-2.5">Действия</th>
               <th className="w-10 px-2 py-2.5" />
             </tr>
           </thead>
@@ -50,6 +63,14 @@ export default function AppointmentsTable({ appointments }: Props) {
                 </td>
                 <td className="px-5 py-3">
                   <StatusBadge status={appointment.status} />
+                </td>
+                <td className="relative z-10 px-5 py-3">
+                  <AppointmentActions
+                    appointment={appointment}
+                    currentEmployeeId={currentEmployeeId}
+                    currentEmployeeRole={currentEmployeeRole}
+                    onChanged={() => router.refresh()}
+                  />
                 </td>
                 <td className="px-2 py-3 text-gray-300 group-hover:text-gray-400">
                   <Link
