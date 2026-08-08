@@ -23,6 +23,10 @@ class AppointmentUpdateIn(BaseModel):
     prescriptions: list[PrescriptionIn] | None = None
     status: AppointmentStatus | None = None
     duration_minutes: int | None = Field(None, alias="durationMinutes")
+    # Этап 1, коммит 5 (docs/PHASE1_ANALYSIS.md §6 п.3) — перенос и отмена.
+    date: Date | None = None
+    time: str | None = None
+    cancellation_reason: str | None = Field(None, alias="cancellationReason")
 
     model_config = ConfigDict(populate_by_name=True)
 

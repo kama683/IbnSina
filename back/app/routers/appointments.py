@@ -1,11 +1,11 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.deps import require_roles
+from app.deps import get_current_employee, require_roles
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.doctor_profile import DoctorProfile
 from app.models.employee import Employee, EmployeeRole, EmployeeStatus
@@ -34,13 +34,21 @@ _VIEW_STATS = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
 _MULTI_DOCTOR_BOOKING = require_roles(
     EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.head_doctor
 )
-# Осмотр/диагноз/назначения — только тот, кто ведёт приём.
-_MANAGE_EXAMINATION = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
+# Этап 1, коммит 5 (docs/PHASE1_ANALYSIS.md §6 п.3, решение B §6.1) — PATCH
+# /{appointment_id} обслуживает три разных действия (осмотр, отмена, перенос)
+# с разной матрицей прав. Route-level guard ниже — ОБЪЕДИНЕНИЕ всех ролей,
+# кому вообще может быть позволено что-то из трёх (иначе default-deny-тест
+# увидит маршрут как "голый", см. риск §6.5 Этапа 0); какое именно действие
+# пришло и кому конкретно оно разрешено — проверяется в теле хендлера.
+_MANAGE_APPOINTMENT = require_roles(
+    EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.head_doctor
+)
 
 _APPOINTMENT_LOAD_OPTIONS = (
     joinedload(Appointment.patient),
     joinedload(Appointment.employee),
     joinedload(Appointment.created_by),
+    joinedload(Appointment.cancelled_by),
 )
 
 _WEEKDAY_TO_DAY_ID = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -148,6 +156,9 @@ def _serialize_appointment(appointment: Appointment) -> dict:
         "doctor": appointment.employee.short_name,
         "createdBy": appointment.created_by.short_name if appointment.created_by else None,
         "status": appointment.status.value,
+        "cancelledAt": appointment.cancelled_at.isoformat() if appointment.cancelled_at else None,
+        "cancelledBy": appointment.cancelled_by.short_name if appointment.cancelled_by else None,
+        "cancellationReason": appointment.cancellation_reason,
     }
 
 
@@ -386,12 +397,28 @@ def _sync_prescriptions(
         )
 
 
-@router.patch("/{appointment_id}", dependencies=[Depends(_MANAGE_EXAMINATION)])
+def _touches_examination_fields(payload: AppointmentUpdateIn) -> bool:
+    return (
+        payload.complaints is not None
+        or payload.objective_status is not None
+        or payload.diagnoses is not None
+        or payload.prescriptions is not None
+        or payload.duration_minutes is not None
+        or (payload.status is not None and payload.status != AppointmentStatus.cancelled)
+    )
+
+
+@router.patch("/{appointment_id}", dependencies=[Depends(_MANAGE_APPOINTMENT)])
 def update_appointment(
     appointment_id: int,
     payload: AppointmentUpdateIn,
     db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
 ):
+    """Один эндпоинт обслуживает три действия с разной матрицей прав
+    (решение B, §6.1 плана) — route-level guard (_MANAGE_APPOINTMENT) только
+    пропускает "в принципе может что-то из трёх", дальше ветвимся по тому,
+    какие поля реально пришли, и проверяем права на конкретное действие."""
     appointment = (
         db.query(Appointment)
         .options(joinedload(Appointment.prescriptions))
@@ -400,6 +427,45 @@ def update_appointment(
     )
     if not appointment:
         raise HTTPException(status_code=404, detail="Приём не найден")
+
+    is_cancellation = payload.status == AppointmentStatus.cancelled
+    is_reschedule = payload.date is not None or payload.time is not None
+
+    if _touches_examination_fields(payload) and current_employee.role not in (
+        EmployeeRole.doctor,
+        EmployeeRole.head_doctor,
+    ):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    if is_cancellation or is_reschedule:
+        # Отмена/перенос: reception и head_doctor — любой приём; назначенный
+        # врач — только свой (решение 3, §6).
+        is_own_appointment = appointment.employee_id == current_employee.id
+        allowed = (
+            current_employee.role in (EmployeeRole.reception, EmployeeRole.head_doctor)
+            or is_own_appointment
+        )
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    if is_reschedule:
+        new_date = payload.date or appointment.date
+        new_time = payload.time or appointment.time
+        _assert_within_working_hours(db, appointment.employee_id, new_date, new_time)
+        conflict = (
+            db.query(Appointment)
+            .filter(
+                Appointment.employee_id == appointment.employee_id,
+                Appointment.date == new_date,
+                Appointment.time == new_time,
+                Appointment.id != appointment.id,
+            )
+            .first()
+        )
+        if conflict:
+            raise HTTPException(status_code=409, detail="На это время уже есть приём")
+        appointment.date = new_date
+        appointment.time = new_time
 
     if payload.complaints is not None:
         appointment.complaint = payload.complaints
@@ -420,7 +486,11 @@ def update_appointment(
         _sync_prescriptions(db, appointment, payload.prescriptions)
 
     if payload.status is not None:
-        if payload.status == AppointmentStatus.in_progress:
+        if is_cancellation:
+            appointment.cancelled_at = datetime.utcnow()
+            appointment.cancelled_by_id = current_employee.id
+            appointment.cancellation_reason = payload.cancellation_reason
+        elif payload.status == AppointmentStatus.in_progress:
             db.query(Appointment).filter(
                 Appointment.employee_id == appointment.employee_id,
                 Appointment.date == appointment.date,
