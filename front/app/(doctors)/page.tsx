@@ -1,4 +1,5 @@
 import CurrentAppointment from "@/components/dashboard/CurrentAppointment";
+import ReceptionQuickSearch from "@/components/dashboard/ReceptionQuickSearch";
 import TodayAppointments from "@/components/dashboard/TodayAppointments";
 import UpcomingWidget from "@/components/dashboard/UpcomingWidget";
 import WeekStats from "@/components/dashboard/WeekStats";
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
       {canViewSchedule ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
           <div className="space-y-5">
+            {employee.role === "reception" && <ReceptionQuickSearch />}
             {currentAppointment && (
               <CurrentAppointment appointment={currentAppointment} />
             )}
