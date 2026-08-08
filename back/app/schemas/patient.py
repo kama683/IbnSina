@@ -36,3 +36,20 @@ class PatientCreateIn(BaseModel):
     dispensary: bool = False
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class PatientUpdateIn(BaseModel):
+    """Этап 1, коммит 6 (docs/PHASE1_ANALYSIS.md §6 п.7) — только
+    демографические поля, медданные (аллергии/диагнозы/дозы и т.п.) сюда не
+    входят, у них свои формы/эндпоинты."""
+
+    full_name: str | None = Field(None, alias="fullName")
+    iin: str | None = None
+    birth_date: date | None = Field(None, alias="birthDate")
+    gender: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    area: str | None = None
+    blood_type: str | None = Field(None, alias="bloodType")
+
+    model_config = ConfigDict(populate_by_name=True)

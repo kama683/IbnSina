@@ -1,17 +1,17 @@
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.deps import require_roles
+from app.deps import get_current_employee, require_roles
 from app.models import Patient
 from app.models.appointment import Appointment, AppointmentStatus
-from app.models.employee import EmployeeRole
+from app.models.employee import Employee, EmployeeRole
 from app.models.health_metric import HealthMetric
 from app.models.hospitalization import Hospitalization
 from app.models.vaccination import Vaccination
-from app.schemas.patient import PatientCreateIn
+from app.schemas.patient import PatientCreateIn, PatientUpdateIn
 
 router = APIRouter()
 
@@ -31,6 +31,9 @@ _VIEW_MEDICAL = require_roles(
 _VIEW_VITALS = require_roles(EmployeeRole.doctor, EmployeeRole.nurse, EmployeeRole.head_doctor)
 # "Осмотр: заполнение" — только тот, кто ведёт приём.
 _VIEW_EXAMINATION = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
+# Этап 1, коммит 6 (docs/PHASE1_ANALYSIS.md §6 п.7) — правка демографических
+# данных пациента (не медданных — у тех свои формы/эндпоинты).
+_MANAGE_DEMOGRAPHICS = require_roles(EmployeeRole.reception, EmployeeRole.head_doctor)
 
 _PATIENT_LOAD_OPTIONS = (
     joinedload(Patient.diseases),
@@ -373,5 +376,49 @@ def get_patient_visit_history(patient_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{patient_id}", dependencies=[Depends(_ANY_STAFF)])
 def get_patient(patient_id: int, db: Session = Depends(get_db)):
+    patient = _get_patient_or_404(db, patient_id)
+    return _serialize_patient(db, patient)
+
+
+@router.patch("/{patient_id}", dependencies=[Depends(_MANAGE_DEMOGRAPHICS)])
+def update_patient(
+    patient_id: int,
+    payload: PatientUpdateIn,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    patient = _get_patient_or_404(db, patient_id)
+
+    if payload.iin is not None and payload.iin != patient.iin:
+        conflict = (
+            db.query(Patient)
+            .filter(Patient.iin == payload.iin, Patient.id != patient_id)
+            .first()
+        )
+        if conflict:
+            raise HTTPException(status_code=409, detail="Пациент с таким ИИН уже существует")
+        patient.iin = payload.iin
+
+    if payload.full_name is not None:
+        patient.full_name = payload.full_name
+        patient.short_name = _build_short_name(payload.full_name)
+    if payload.birth_date is not None:
+        patient.birth_date = payload.birth_date
+    if payload.gender is not None:
+        patient.gender = payload.gender
+    if payload.phone is not None:
+        patient.phone = payload.phone
+    if payload.address is not None:
+        patient.address = payload.address
+    if payload.area is not None:
+        patient.area = payload.area
+    if payload.blood_type is not None:
+        patient.blood_type = payload.blood_type
+
+    patient.updated_at = datetime.utcnow()
+    patient.updated_by_id = current_employee.id
+
+    db.commit()
+
     patient = _get_patient_or_404(db, patient_id)
     return _serialize_patient(db, patient)
