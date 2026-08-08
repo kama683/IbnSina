@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.deps import require_roles
 from app.models.appointment import Appointment, AppointmentStatus
-from app.models.employee import Employee, EmployeeRole
+from app.models.doctor_profile import DoctorProfile
+from app.models.employee import Employee, EmployeeRole, EmployeeStatus
 from app.models.patient import Patient
 from app.models.prescription import Prescription
+from app.models.schedule import Schedule
 from app.schemas.appointment import AppointmentCreateIn, AppointmentUpdateIn
 
 router = APIRouter()
@@ -21,15 +23,62 @@ _VIEW_SCHEDULE = require_roles(
 )
 # Управленческая статистика — доктор/главврач.
 _VIEW_STATS = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
-# Запись на приём — ТОЛЬКО "к себе": POST /appointments всегда пишет
-# employee_id = вызывающий сотрудник (выбора врача в теле запроса ещё нет —
-# это Этап 1, "многодокторская запись"). Поэтому reception сюда сознательно
-# НЕ включён, хотя в матрице плана у него есть "Запись на приём: к себе" —
-# для reception это означало бы «записать приём на самого себя как на врача»,
-# что семантически неверно до появления выбора врача в Этапе 1.
-_CREATE_APPOINTMENT = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
+# Этап 1, коммит 3 (docs/PHASE1_ANALYSIS.md §6 п.6) — многодокторская запись:
+# employeeId теперь выбирается в теле запроса, поэтому reception снят с
+# исключения из Этапа 0 (там сама причина исключения была «нет выбора врача»,
+# см. историю коммита e6f7a8b9c0d1/f7a8b9c0d1e2). Роль не ограничивает, КОМУ
+# именно можно записать — это делает _get_bookable_employee_or_404 ниже
+# (только активные с doctor_profile), одинаково для всех трёх ролей.
+_CREATE_APPOINTMENT = require_roles(
+    EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.head_doctor
+)
 # Осмотр/диагноз/назначения — только тот, кто ведёт приём.
 _MANAGE_EXAMINATION = require_roles(EmployeeRole.doctor, EmployeeRole.head_doctor)
+
+_APPOINTMENT_LOAD_OPTIONS = (
+    joinedload(Appointment.patient),
+    joinedload(Appointment.employee),
+    joinedload(Appointment.created_by),
+)
+
+_WEEKDAY_TO_DAY_ID = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def _get_bookable_employee_or_404(db: Session, employee_id: int) -> Employee:
+    """Тот же критерий "кого можно выбрать врачом", что и в
+    GET /api/employees?role=doctor (решение A, §6.1 плана) — активный
+    сотрудник с doctor_profile. Не полагаемся на клиента: employeeId в теле
+    запроса мог прийти откуда угодно, значение всегда перепроверяется тут."""
+    employee = (
+        db.query(Employee)
+        .join(DoctorProfile, DoctorProfile.employee_id == Employee.id)
+        .filter(Employee.id == employee_id, Employee.status == EmployeeStatus.active)
+        .first()
+    )
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Врач не найден")
+    return employee
+
+
+def _assert_within_working_hours(db: Session, employee_id: int, appt_date: date, time: str) -> None:
+    """Жёсткий reject вне графика (§6 п.6): считаем окно графика на этот
+    день недели и сравниваем как строки "HH:MM" — при одинаковой длине это
+    эквивалентно сравнению времени. Источник истины и для превью слотов
+    (GET /available-slots, коммит 4), и здесь — коммит 4 не должен позволить
+    предложить слот, который потом даст 400 при создании."""
+    day_id = _WEEKDAY_TO_DAY_ID[appt_date.weekday()]
+    schedule = (
+        db.query(Schedule)
+        .filter(Schedule.employee_id == employee_id, Schedule.day_id == day_id)
+        .first()
+    )
+    if schedule is None or not schedule.enabled:
+        raise HTTPException(status_code=400, detail="Врач не принимает в этот день недели")
+    if not (schedule.start <= time < schedule.end):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Время вне рабочих часов врача ({schedule.start}–{schedule.end})",
+        )
 
 MONTHS_GENITIVE = [
     "января",
@@ -70,12 +119,14 @@ def _serialize_appointment(appointment: Appointment) -> dict:
     return {
         "id": str(appointment.id),
         "patientId": str(appointment.patient_id),
+        "employeeId": str(appointment.employee_id),
         "date": appointment.date.strftime("%d.%m.%Y"),
         "time": appointment.time,
         "patient": appointment.patient.short_name,
         "complaint": appointment.complaint,
         "diagnosis": appointment.diagnosis,
         "doctor": appointment.employee.short_name,
+        "createdBy": appointment.created_by.short_name if appointment.created_by else None,
         "status": appointment.status.value,
     }
 
@@ -83,10 +134,7 @@ def _serialize_appointment(appointment: Appointment) -> dict:
 def _query_appointments(db: Session, from_date: date, to_date: date) -> list[Appointment]:
     return (
         db.query(Appointment)
-        .options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.employee),
-        )
+        .options(*_APPOINTMENT_LOAD_OPTIONS)
         .filter(Appointment.date >= from_date, Appointment.date <= to_date)
         .order_by(Appointment.date, Appointment.time)
         .all()
@@ -179,10 +227,7 @@ def get_queue_appointments(db: Session = Depends(get_db)):
     today = date.today()
     rows = (
         db.query(Appointment)
-        .options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.employee),
-        )
+        .options(*_APPOINTMENT_LOAD_OPTIONS)
         .filter(
             Appointment.date == today,
             Appointment.status.in_(
@@ -200,10 +245,7 @@ def get_today_appointments(db: Session = Depends(get_db)):
     today = date.today()
     rows = (
         db.query(Appointment)
-        .options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.employee),
-        )
+        .options(*_APPOINTMENT_LOAD_OPTIONS)
         .filter(Appointment.date == today)
         .order_by(Appointment.time)
         .all()
@@ -216,10 +258,7 @@ def get_current_appointment(db: Session = Depends(get_db)):
     today = date.today()
     row = (
         db.query(Appointment)
-        .options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.employee),
-        )
+        .options(*_APPOINTMENT_LOAD_OPTIONS)
         .filter(
             Appointment.date == today,
             Appointment.status == AppointmentStatus.in_progress,
@@ -235,16 +274,19 @@ def get_current_appointment(db: Session = Depends(get_db)):
 def create_appointment(
     payload: AppointmentCreateIn,
     db: Session = Depends(get_db),
-    employee: Employee = Depends(_CREATE_APPOINTMENT),
+    current_employee: Employee = Depends(_CREATE_APPOINTMENT),
 ):
     patient = db.query(Patient).filter(Patient.id == payload.patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Пациент не найден")
 
+    target_employee = _get_bookable_employee_or_404(db, payload.employee_id)
+    _assert_within_working_hours(db, target_employee.id, payload.date, payload.time)
+
     conflict = (
         db.query(Appointment)
         .filter(
-            Appointment.employee_id == employee.id,
+            Appointment.employee_id == target_employee.id,
             Appointment.date == payload.date,
             Appointment.time == payload.time,
         )
@@ -259,17 +301,15 @@ def create_appointment(
         complaint=payload.complaint,
         status=AppointmentStatus.scheduled,
         patient_id=payload.patient_id,
-        employee_id=employee.id,
+        employee_id=target_employee.id,
+        created_by_id=current_employee.id,
     )
     db.add(appointment)
     db.commit()
 
     appointment = (
         db.query(Appointment)
-        .options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.employee),
-        )
+        .options(*_APPOINTMENT_LOAD_OPTIONS)
         .filter(Appointment.id == appointment.id)
         .first()
     )
@@ -352,10 +392,7 @@ def update_appointment(
 
     appointment = (
         db.query(Appointment)
-        .options(
-            joinedload(Appointment.patient),
-            joinedload(Appointment.employee),
-        )
+        .options(*_APPOINTMENT_LOAD_OPTIONS)
         .filter(Appointment.id == appointment_id)
         .first()
     )

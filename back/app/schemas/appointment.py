@@ -29,6 +29,7 @@ class AppointmentUpdateIn(BaseModel):
 
 class AppointmentCreateIn(BaseModel):
     patient_id: int = Field(alias="patientId")
+    employee_id: int = Field(alias="employeeId")
     date: Date
     time: str
     complaint: str
