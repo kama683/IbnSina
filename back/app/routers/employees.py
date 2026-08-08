@@ -1,18 +1,28 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.deps import get_current_employee as _auth_current_employee
+from app.deps import require_roles
 from app.models.appointment import Appointment
 from app.models.doctor_profile import DoctorProfile
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeRole, EmployeeStatus
 from app.models.patient import Patient
 from app.schemas.doctor import DoctorProfileUpdateIn
 from app.services.audit import record_audit
 
 router = APIRouter()
+
+# Этап 1, коммит 2 (docs/PHASE1_ANALYSIS.md §6, решение A) — список врачей
+# для формы записи. head_doctor тоже ведёт приём и обязан попадать в список,
+# поэтому фильтр ниже не по строгому role == doctor, а по "есть
+# doctor_profile" — название query-параметра role=doctor описывает смысл
+# запроса ("дай клиницистов"), а не точное сравнение с колонкой.
+_VIEW_DOCTOR_LIST = require_roles(
+    EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.head_doctor
+)
 
 
 def _with_relations(db: Session, employee_id: int) -> Employee:
@@ -157,6 +167,35 @@ def serialize_doctor_profile(db: Session, employee: Employee) -> dict:
         "schedule": _serialize_schedule(employee),
         "education": _serialize_education(profile),
     }
+
+
+def serialize_employee_list_item(employee: Employee) -> dict:
+    profile = employee.doctor_profile
+    return {
+        "id": employee.id,
+        "shortName": employee.short_name,
+        "area": (profile.area if profile else None) or "",
+        "specialty": (profile.specialty if profile else None) or "",
+    }
+
+
+@router.get("", dependencies=[Depends(_VIEW_DOCTOR_LIST)])
+def list_employees(
+    role: str = Query(..., description="Пока поддерживается только 'doctor'"),
+    db: Session = Depends(get_db),
+):
+    if role != "doctor":
+        raise HTTPException(status_code=400, detail="Поддерживается только role=doctor")
+
+    employees = (
+        db.query(Employee)
+        .join(DoctorProfile, DoctorProfile.employee_id == Employee.id)
+        .options(joinedload(Employee.doctor_profile))
+        .filter(Employee.status == EmployeeStatus.active)
+        .order_by(Employee.short_name)
+        .all()
+    )
+    return [serialize_employee_list_item(employee) for employee in employees]
 
 
 @router.get("/me")
