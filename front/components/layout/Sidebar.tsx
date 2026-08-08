@@ -11,6 +11,9 @@ import {
   Settings,
   LogOut,
   UserRound,
+  Tag,
+  Wallet,
+  RotateCcw,
 } from "lucide-react";
 import { logout } from "@/lib/api/auth";
 import type { Employee } from "@/lib/api/employees";
@@ -27,6 +30,9 @@ const ICONS: Record<NavItemConfig["icon"], React.ComponentType<{ size?: number; 
   patients: Users,
   profile: UserRound,
   settings: Settings,
+  services: Tag,
+  cash: Wallet,
+  refund: RotateCcw,
 };
 
 export default function Sidebar({ employee }: SidebarProps) {

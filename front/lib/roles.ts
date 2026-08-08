@@ -62,10 +62,36 @@ export const MANAGE_ANY_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "head_
 // appointments.py — права не расширяем, reception/nurse только смотрят.
 export const CHECK_IN_ROLES: EmployeeRole[] = ["doctor", "head_doctor"];
 
+// Этап 2, коммит 1 (docs/PHASE2_ANALYSIS.md §6, решение A) — прейскурант:
+// accountant вне доступа даже на чтение (= _VIEW_SERVICES в services.py).
+export const VIEW_SERVICES_ROLES: EmployeeRole[] = [
+  "reception",
+  "doctor",
+  "nurse",
+  "head_doctor",
+];
+export const MANAGE_SERVICES_ROLES: EmployeeRole[] = ["head_doctor"];
+
+// Этап 2, коммиты 3-6 — касса/счета/возвраты: reception и head_doctor
+// (= _MANAGE_INVOICE/_MANAGE_SHIFT/_REQUEST_REFUND в back/app/routers/*.py).
+export const MANAGE_CASH_ROLES: EmployeeRole[] = ["reception", "head_doctor"];
+export const APPROVE_DISCOUNT_ROLES: EmployeeRole[] = ["head_doctor"];
+export const DECIDE_REFUND_ROLES: EmployeeRole[] = ["head_doctor"];
+export const VIEW_DAILY_REPORT_ROLES: EmployeeRole[] = ["head_doctor"];
+
 export type NavItemConfig = {
   href: string;
   label: string;
-  icon: "dashboard" | "calendar" | "queue" | "patients" | "profile" | "settings";
+  icon:
+    | "dashboard"
+    | "calendar"
+    | "queue"
+    | "patients"
+    | "profile"
+    | "settings"
+    | "services"
+    | "cash"
+    | "refund";
   roles: EmployeeRole[] | "all";
 };
 
@@ -74,6 +100,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { href: "/appointments", label: "Приёмы", icon: "calendar", roles: VIEW_SCHEDULE_ROLES },
   { href: "/queue", label: "Живая очередь", icon: "queue", roles: VIEW_SCHEDULE_ROLES },
   { href: "/patients", label: "Пациенты", icon: "patients", roles: ANY_STAFF_ROLES },
+  { href: "/services", label: "Услуги", icon: "services", roles: VIEW_SERVICES_ROLES },
   { href: "/profile", label: "Профиль", icon: "profile", roles: HAS_DOCTOR_PROFILE_ROLES },
   { href: "/settings", label: "Настройки", icon: "settings", roles: "all" },
 ];
