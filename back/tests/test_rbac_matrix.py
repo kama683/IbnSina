@@ -182,6 +182,15 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.head_doctor})),
     ("GET", "/api/reports/daily?date=2026-08-08",
      frozenset({R.head_doctor})),
+    # Этап 2, коммит 6.
+    ("GET", "/api/refund-requests",
+     frozenset({R.reception, R.head_doctor})),
+    ("POST", "/api/refund-requests",
+     frozenset({R.reception, R.head_doctor})),
+    ("POST", "/api/refund-requests/1/approve",
+     frozenset({R.head_doctor})),
+    ("POST", "/api/refund-requests/1/reject",
+     frozenset({R.head_doctor})),
 ]
 
 

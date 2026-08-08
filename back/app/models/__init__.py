@@ -19,6 +19,7 @@ from app.models.invoice_number_counter import InvoiceNumberCounter
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_item import InvoiceItem
 from app.models.payment import Payment, PaymentMethod
+from app.models.refund_request import RefundRequest, RefundRequestStatus
 
 __all__ = [
     "DoctorEducation",
@@ -51,4 +52,6 @@ __all__ = [
     "InvoiceItem",
     "Payment",
     "PaymentMethod",
+    "RefundRequest",
+    "RefundRequestStatus",
 ]

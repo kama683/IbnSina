@@ -9,6 +9,7 @@ from app.routers import (
     icd10,
     invoices,
     patients,
+    refund_requests,
     reports,
     search,
     services,
@@ -38,6 +39,9 @@ app.include_router(services.router, prefix="/api/services", tags=["services"])
 app.include_router(cash_shifts.router, prefix="/api/cash-shifts", tags=["cash-shifts"])
 app.include_router(invoices.router, prefix="/api/invoices", tags=["invoices"])
 app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
+app.include_router(
+    refund_requests.router, prefix="/api/refund-requests", tags=["refund-requests"]
+)
 
 
 @app.get("/health")
