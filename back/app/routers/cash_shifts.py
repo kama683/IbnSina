@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,6 +9,7 @@ from app.database import get_db
 from app.deps import get_current_employee, require_roles
 from app.models.cash_shift import CashShift, CashShiftStatus
 from app.models.employee import Employee, EmployeeRole
+from app.models.payment import Payment, PaymentMethod
 from app.schemas.cash_shift import CashShiftCloseIn, CashShiftOpenIn
 from app.services.audit import record_audit
 
@@ -44,6 +46,18 @@ def _assert_can_manage(shift: CashShift, employee: Employee) -> None:
     is_own = shift.cashier_employee_id == employee.id
     if not (is_own or employee.role == EmployeeRole.head_doctor):
         raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+
+def _db_now(db: Session) -> datetime:
+    """Postgres-сессия на этом сервере в другом часовом поясе (Asia/
+    Qyzylorda, +5), чем Python (datetime.utcnow()). opened_at/created_at
+    везде проставляются через server_default=func.now() (время БД) — если
+    закрытие смены проставлять через datetime.utcnow(), закрытие окажется
+    "раньше" собственных платежей смены при сравнении в отчёте (найдено
+    именно на этом тесте). Берём текущее время из той же БД для
+    consistency, а не чиним timezone на уровне подключения (шире по blast
+    radius — задело бы уже закоммиченные Этап 0/1 миграции)."""
+    return db.execute(text("SELECT now()")).scalar()
 
 
 @router.post("", dependencies=[Depends(_MANAGE_SHIFT)])
@@ -113,7 +127,7 @@ def close_shift(
         raise HTTPException(status_code=409, detail="Смена уже закрыта")
 
     shift.actual_cash = payload.actual_cash
-    shift.closed_at = datetime.utcnow()
+    shift.closed_at = _db_now(db)
     shift.status = CashShiftStatus.closed
 
     record_audit(
@@ -129,3 +143,53 @@ def close_shift(
 
     shift = _get_shift_or_404(db, shift_id)
     return serialize_shift(shift)
+
+
+@router.get("/{shift_id}/report", dependencies=[Depends(_MANAGE_SHIFT)])
+def get_shift_report(
+    shift_id: int,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    """Этап 2, коммит 5 (docs/PHASE2_ANALYSIS.md) — что принято за смену.
+
+    expected_cash/discrepancy НЕ хранятся (см. модель) — считаются здесь из
+    факта Payment. "Платежи этой смены" = созданы её кассиром в промежутке
+    [opened_at; closed_at или сейчас] — так в отчёт попадают все способы
+    оплаты (нал/карта/перевод), а не только те, что несут cash_shift_id
+    (его физически имеют только cash-платежи, см. Payment). Это моё
+    собственное техническое решение (в §6 плана явно не описано) —
+    трактует "принято за смену" как "принято этим кассиром за это время",
+    не только то, что подшито к смене как cash_shift_id.
+    """
+    shift = _get_shift_or_404(db, shift_id)
+    _assert_can_manage(shift, current_employee)
+
+    window_end = shift.closed_at or _db_now(db)
+    payments = (
+        db.query(Payment)
+        .filter(
+            Payment.created_by_id == shift.cashier_employee_id,
+            Payment.created_at >= shift.opened_at,
+            Payment.created_at <= window_end,
+        )
+        .all()
+    )
+
+    cash_total = sum(p.amount for p in payments if p.method == PaymentMethod.cash)
+    card_total = sum(p.amount for p in payments if p.method == PaymentMethod.card)
+    transfer_total = sum(p.amount for p in payments if p.method == PaymentMethod.transfer)
+    refunds_total = sum(-p.amount for p in payments if p.amount < 0)
+    expected_cash = shift.opening_balance + cash_total
+    discrepancy = shift.actual_cash - expected_cash if shift.actual_cash is not None else None
+
+    return {
+        "shift": serialize_shift(shift),
+        "cashTotal": cash_total,
+        "cardTotal": card_total,
+        "transferTotal": transfer_total,
+        "refundsTotal": refunds_total,
+        "paymentsCount": len(payments),
+        "expectedCash": expected_cash,
+        "discrepancy": discrepancy,
+    }

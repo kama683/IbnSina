@@ -170,6 +170,18 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.reception, R.head_doctor})),
     ("POST", "/api/invoices/1/payments",
      frozenset({R.reception, R.head_doctor})),
+    # Этап 2, коммит 5. reception тут ТОЛЬКО head_doctor в allowed — в
+    # отличие от PATCH /appointments/1 (Этап 1), проверка владения здесь
+    # ничем не гасится (нет полей тела, которые можно не передать) и
+    # срабатывает безусловно; общий id=1 к этому моменту сессии уже
+    # принадлежит другому сотруднику (из test_cash_shifts.py), так что
+    # свежесозданная reception из role_tokens гарантированно не владелец —
+    # получит 403 не по роли, а по владению. Ownership отдельно проверен в
+    # test_cash_shifts.py/test_reports.py.
+    ("GET", "/api/cash-shifts/1/report",
+     frozenset({R.head_doctor})),
+    ("GET", "/api/reports/daily?date=2026-08-08",
+     frozenset({R.head_doctor})),
 ]
 
 
