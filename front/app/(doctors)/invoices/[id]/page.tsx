@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api/api";
 import { getCurrentEmployee } from "@/lib/api/employees";
 import { getInvoice, getInvoicePayments } from "@/lib/api/invoices";
 import { getPatient } from "@/lib/api/patients";
+import { getRefundRequests } from "@/lib/api/refund-requests";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -20,10 +21,12 @@ export default async function InvoicePage({ params }: Props) {
       getInvoice(invoiceId),
       getCurrentEmployee(),
     ]);
-    const [patient, payments] = await Promise.all([
+    const [patient, payments, allRefundRequests] = await Promise.all([
       getPatient(String(invoice.patientId)),
       invoice.status === "draft" ? Promise.resolve([]) : getInvoicePayments(invoiceId),
+      invoice.status === "draft" ? Promise.resolve([]) : getRefundRequests(),
     ]);
+    const refundRequests = allRefundRequests.filter((r) => r.invoiceId === invoice.id);
 
     return (
       <div className="mx-auto max-w-[900px] space-y-5">
@@ -49,6 +52,7 @@ export default async function InvoicePage({ params }: Props) {
             <InvoicePaymentsSection
               invoice={invoice}
               payments={payments}
+              refundRequests={refundRequests}
               currentEmployeeRole={employee.role}
             />
           )}

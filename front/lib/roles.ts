@@ -102,6 +102,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { href: "/patients", label: "Пациенты", icon: "patients", roles: ANY_STAFF_ROLES },
   { href: "/services", label: "Услуги", icon: "services", roles: VIEW_SERVICES_ROLES },
   { href: "/cash-register", label: "Касса", icon: "cash", roles: MANAGE_CASH_ROLES },
+  { href: "/refunds", label: "Возвраты", icon: "refund", roles: MANAGE_CASH_ROLES },
   { href: "/profile", label: "Профиль", icon: "profile", roles: HAS_DOCTOR_PROFILE_ROLES },
   { href: "/settings", label: "Настройки", icon: "settings", roles: "all" },
 ];
