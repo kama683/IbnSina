@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     # по вопросу 6 в docs/PHASE0_ANALYSIS.md.
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 30
+    # Этап 2, коммит 3 (docs/PHASE2_ANALYSIS.md, решение 7) — скидка на счёте
+    # выше этого порога требует подтверждения head_doctor. Таблицы Settings
+    # ещё нет (появится в Этапе 6 разом для всех настроек) — пока просто
+    # env-переменная, правка требует передеплоя.
+    default_discount_threshold_percent: int = 10
 
     class Config:
         env_file = ".env"

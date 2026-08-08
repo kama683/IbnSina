@@ -7,6 +7,7 @@ from app.routers import (
     cash_shifts,
     employees,
     icd10,
+    invoices,
     patients,
     search,
     services,
@@ -34,6 +35,7 @@ app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(icd10.router, prefix="/api/icd10", tags=["icd10"])
 app.include_router(services.router, prefix="/api/services", tags=["services"])
 app.include_router(cash_shifts.router, prefix="/api/cash-shifts", tags=["cash-shifts"])
+app.include_router(invoices.router, prefix="/api/invoices", tags=["invoices"])
 
 
 @app.get("/health")

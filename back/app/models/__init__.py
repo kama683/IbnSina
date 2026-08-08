@@ -15,6 +15,9 @@ from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
 from app.models.service import Service, ServiceCategory
 from app.models.cash_shift import CashShift, CashShiftStatus
+from app.models.invoice_number_counter import InvoiceNumberCounter
+from app.models.invoice import Invoice, InvoiceStatus
+from app.models.invoice_item import InvoiceItem
 
 __all__ = [
     "DoctorEducation",
@@ -41,4 +44,8 @@ __all__ = [
     "ServiceCategory",
     "CashShift",
     "CashShiftStatus",
+    "InvoiceNumberCounter",
+    "Invoice",
+    "InvoiceStatus",
+    "InvoiceItem",
 ]
