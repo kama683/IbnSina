@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import Autocomplete from "@/components/ui/Autocomplete";
-import { createAppointment } from "@/lib/api/appointments";
+import { createAppointment, getAvailableSlots } from "@/lib/api/appointments";
 import { getDoctors, type DoctorListItem } from "@/lib/api/employees";
 import type { Patient } from "@/lib/types";
 
@@ -32,9 +32,11 @@ export default function AppointmentsToolbar({
   const [doctors, setDoctors] = useState<DoctorListItem[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorListItem | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [form, setForm] = useState({
     date: listDate,
-    time: "09:00",
+    time: "",
     complaint: "",
   });
 
@@ -44,6 +46,23 @@ export default function AppointmentsToolbar({
       .then(setDoctors)
       .catch(() => setDoctors([]));
   }, [open]);
+
+  // Этап 1, коммит 8 (docs/PHASE1_ANALYSIS.md §6 п.6) — слоты из графика
+  // выбранного врача на выбранную дату вместо свободного ввода времени;
+  // при смене врача/даты уже выбранное время сбрасывается, т.к. оно могло
+  // перестать быть доступным.
+  useEffect(() => {
+    if (!selectedDoctor || !form.date) {
+      setSlots([]);
+      return;
+    }
+    setSlotsLoading(true);
+    setForm((prev) => ({ ...prev, time: "" }));
+    getAvailableSlots(String(selectedDoctor.id), form.date)
+      .then(setSlots)
+      .catch(() => setSlots([]))
+      .finally(() => setSlotsLoading(false));
+  }, [selectedDoctor, form.date]);
 
   // Этап 1, коммит 7 (docs/PHASE1_ANALYSIS.md §6 п.1) — по умолчанию врач
   // участка пациента, reception может выбрать другого вручную.
@@ -188,14 +207,29 @@ export default function AppointmentsToolbar({
                 </label>
                 <label className="text-sm">
                   <span className="mb-1 block text-gray-600">Время</span>
-                  <input
-                    type="time"
+                  <select
                     value={form.time}
+                    disabled={!selectedDoctor || slotsLoading}
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, time: e.target.value }))
                     }
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2"
-                  />
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">
+                      {!selectedDoctor
+                        ? "Сначала выберите врача"
+                        : slotsLoading
+                          ? "Загрузка…"
+                          : slots.length === 0
+                            ? "Нет свободных слотов"
+                            : "Выберите время"}
+                    </option>
+                    {slots.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <label className="text-sm">
@@ -227,7 +261,7 @@ export default function AppointmentsToolbar({
               </button>
               <button
                 type="button"
-                disabled={saving || !selectedPatient || !selectedDoctor}
+                disabled={saving || !selectedPatient || !selectedDoctor || !form.time}
                 onClick={handleCreate}
                 className="rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >

@@ -53,6 +53,18 @@ export function updateAppointmentStatus(
   return apiPatch<Appointment>(`/api/appointments/${id}`, { status });
 }
 
+/** Этап 1, коммит 8 (docs/PHASE1_ANALYSIS.md §6 п.6) — превью слотов для
+ * формы записи. Не источник истины: бэкенд всё равно перепроверяет сам при
+ * создании/переносе (решение C, §6.1), это только чтобы не предлагать
+ * заведомо занятое/нерабочее время. */
+export function getAvailableSlots(
+  employeeId: string,
+  date: string,
+): Promise<string[]> {
+  const params = new URLSearchParams({ employeeId, date });
+  return apiGet<string[]>(`/api/appointments/available-slots?${params}`);
+}
+
 export type AppointmentCreatePayload = {
   patientId: string;
   employeeId: string;
