@@ -56,6 +56,12 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_vaccinations_patient_id'), table_name='vaccinations')
     op.drop_table('vaccinations')
     op.drop_index(op.f('ix_hospitalizations_patient_id'), table_name='hospitalizations')
-    op.drop_index(op.f('ix_hospitalizations_doctor_id'), table_name='hospitalizations')
+    # f7a8b9c0d1e2 (позже в цепочке) удаляет hospitalizations.doctor_id при
+    # upgrade — Postgres каскадно сносит и этот индекс; downgrade
+    # f7a8b9c0d1e2 восстанавливает колонку, но не индекс (найдено полной
+    # проверкой цепочки миграций с нуля, Этап 2, коммит 14).
+    existing_indexes = {idx["name"] for idx in sa.inspect(op.get_bind()).get_indexes("hospitalizations")}
+    if op.f('ix_hospitalizations_doctor_id') in existing_indexes:
+        op.drop_index(op.f('ix_hospitalizations_doctor_id'), table_name='hospitalizations')
     op.drop_table('hospitalizations')
     # ### end Alembic commands ###

@@ -59,4 +59,9 @@ def downgrade() -> None:
     op.drop_table('appointments')
     op.drop_table('patients')
     op.drop_table('doctors')
+    # DROP TABLE не удаляет Postgres ENUM TYPE, созданный неявно через
+    # sa.Enum(...) в колонке — без явного drop тип остаётся и следующий
+    # upgrade падает на "type already exists" (найдено полной проверкой
+    # цепочки миграций с нуля, Этап 2, коммит 14).
+    sa.Enum(name='appointment_status').drop(op.get_bind(), checkfirst=True)
     # ### end Alembic commands ###

@@ -123,6 +123,42 @@ def test_refund_approve_creates_negative_payment_and_updates_invoice(client, db_
     assert -400000 in amounts
 
 
+def test_partial_refund_leaves_invoice_partial_not_refunded(client, db_session):
+    """Этап 2, коммит 14 (добор) — частичный возврат освобождает часть
+    баланса счёта (§7 плана, "возврат освобождает баланс счёта"), но не
+    переводит счёт в refunded целиком, в отличие от полного возврата,
+    покрытого test_refund_approve_creates_negative_payment_and_updates_invoice."""
+    reception = _make_employee(db_session, email="partial-refund-reception@test.local", role=EmployeeRole.reception)
+    head_doctor = _make_employee(db_session, email="partial-refund-head@test.local", role=EmployeeRole.head_doctor)
+    patient_id = _make_patient(db_session, iin="900101700105")
+    service_id = _make_service(db_session, code="REF-SVC-5", price=500000)
+
+    reception_headers = _login(client, "partial-refund-reception@test.local")
+    head_headers = _login(client, "partial-refund-head@test.local")
+    invoice_id, payment_id = _make_paid_invoice_and_payment(
+        client, reception_headers, patient_id=patient_id, service_id=service_id, price=500000
+    )
+
+    requested = client.post(
+        "/api/refund-requests",
+        headers=reception_headers,
+        json={"paymentId": payment_id, "amount": 200000, "reason": "Частичный возврат"},
+    )
+    assert requested.status_code == 200, requested.text
+    request_id = requested.json()["id"]
+
+    approved = client.post(f"/api/refund-requests/{request_id}/approve", headers=head_headers)
+    assert approved.status_code == 200, approved.text
+
+    invoice_after = client.get(f"/api/invoices/{invoice_id}", headers=reception_headers)
+    body = invoice_after.json()
+    assert body["status"] == "partial"
+
+    payments = client.get(f"/api/invoices/{invoice_id}/payments", headers=reception_headers)
+    net_paid = sum(p["amount"] for p in payments.json())
+    assert net_paid == 300000
+
+
 def test_reception_cannot_approve_own_refund_request(client, db_session):
     reception = _make_employee(db_session, email="refund-reception-2@test.local", role=EmployeeRole.reception)
     patient_id = _make_patient(db_session, iin="900101700102")
