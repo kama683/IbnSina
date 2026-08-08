@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import InvoiceDetailContent from "@/components/invoices/InvoiceDetailContent";
+import InvoicePaymentsSection from "@/components/invoices/InvoicePaymentsSection";
 import { ApiError } from "@/lib/api/api";
 import { getCurrentEmployee } from "@/lib/api/employees";
-import { getInvoice } from "@/lib/api/invoices";
+import { getInvoice, getInvoicePayments } from "@/lib/api/invoices";
 import { getPatient } from "@/lib/api/patients";
 
 type Props = {
@@ -19,7 +20,10 @@ export default async function InvoicePage({ params }: Props) {
       getInvoice(invoiceId),
       getCurrentEmployee(),
     ]);
-    const patient = await getPatient(String(invoice.patientId));
+    const [patient, payments] = await Promise.all([
+      getPatient(String(invoice.patientId)),
+      invoice.status === "draft" ? Promise.resolve([]) : getInvoicePayments(invoiceId),
+    ]);
 
     return (
       <div className="mx-auto max-w-[900px] space-y-5">
@@ -40,7 +44,15 @@ export default async function InvoicePage({ params }: Props) {
           </h1>
         </div>
 
-        <InvoiceDetailContent invoice={invoice} currentEmployeeRole={employee.role} />
+        <InvoiceDetailContent invoice={invoice} currentEmployeeRole={employee.role}>
+          {invoice.status !== "draft" && invoice.status !== "cancelled" && (
+            <InvoicePaymentsSection
+              invoice={invoice}
+              payments={payments}
+              currentEmployeeRole={employee.role}
+            />
+          )}
+        </InvoiceDetailContent>
       </div>
     );
   } catch (error) {
