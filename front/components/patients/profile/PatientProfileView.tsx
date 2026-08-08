@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import PatientProfileContent from "@/components/patients/profile/PatientProfileContent";
 import PatientProfileHeader from "@/components/patients/profile/PatientProfileHeader";
+import type { EmployeeRole } from "@/lib/api/employees";
 import type {
   HealthMetric,
   Patient,
@@ -14,6 +15,7 @@ type Props = {
   history: PatientMedicalHistoryEntry[];
   healthMetrics: HealthMetric[];
   vaccinations: Vaccination[];
+  currentEmployeeRole: EmployeeRole;
 };
 
 export default function PatientProfileView({
@@ -21,6 +23,7 @@ export default function PatientProfileView({
   history,
   healthMetrics,
   vaccinations,
+  currentEmployeeRole,
 }: Props) {
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
@@ -50,13 +53,14 @@ export default function PatientProfileView({
         </Link>
       </div>
 
-      <PatientProfileHeader patient={patient} />
+      <PatientProfileHeader patient={patient} currentEmployeeRole={currentEmployeeRole} />
 
       <PatientProfileContent
         patient={patient}
         history={history}
         healthMetrics={healthMetrics}
         vaccinations={vaccinations}
+        currentEmployeeRole={currentEmployeeRole}
       />
     </div>
   );

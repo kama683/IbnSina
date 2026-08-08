@@ -35,6 +35,13 @@ export const HAS_DOCTOR_PROFILE_ROLES: EmployeeRole[] = ["doctor", "head_doctor"
 // управленческую статистику за неделю.
 export const VIEW_STATS_ROLES: EmployeeRole[] = ["doctor", "head_doctor"];
 
+// = _VIEW_VITALS в patients.py (GET .../health-metrics, .../vaccinations) —
+// reception и accountant вне доступа. Этап 1, коммит 12: карточка пациента
+// раньше звала эти эндпоинты безусловно для любой роли и 500-илась для
+// reception (403 из Promise.all не отлавливался) — теперь фронт сам не
+// запрашивает то, что бэкенд всё равно не отдаст.
+export const VIEW_VITALS_ROLES: EmployeeRole[] = ["doctor", "nurse", "head_doctor"];
+
 // = _ANY_STAFF в patients.py/search.py — все, кроме admin.
 export const ANY_STAFF_ROLES: EmployeeRole[] = [
   "reception",

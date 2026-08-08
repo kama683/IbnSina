@@ -11,21 +11,24 @@ import PatientProfileGeneralTab from "@/components/patients/profile/PatientProfi
 import PatientProfileHealthPassportTab from "@/components/patients/profile/PatientProfileHealthPassportTab";
 import PatientProfileHistoryTab from "@/components/patients/profile/PatientProfileHistoryTab";
 import PatientProfileVaccinationsTab from "@/components/patients/profile/PatientProfileVaccinationsTab";
+import type { EmployeeRole } from "@/lib/api/employees";
+import { VIEW_VITALS_ROLES } from "@/lib/roles";
 
-const tabs = [
+const ALL_TABS = [
   { id: "general", label: "Основное" },
   { id: "history", label: "История болезни" },
   { id: "passport", label: "Паспорт здоровья" },
   { id: "vaccinations", label: "Прививки" },
 ] as const;
 
-type TabId = (typeof tabs)[number]["id"];
+type TabId = (typeof ALL_TABS)[number]["id"];
 
 type Props = {
   patient: Patient;
   history: PatientMedicalHistoryEntry[];
   healthMetrics: HealthMetric[];
   vaccinations: Vaccination[];
+  currentEmployeeRole: EmployeeRole;
 };
 
 export default function PatientProfileContent({
@@ -33,7 +36,14 @@ export default function PatientProfileContent({
   history,
   healthMetrics,
   vaccinations,
+  currentEmployeeRole,
 }: Props) {
+  // Паспорт здоровья/прививки бэкенд всё равно не отдаст reception/accountant
+  // (_VIEW_VITALS в patients.py) — вкладки скрыты, а не пустые, см. коммит 12.
+  const canViewVitals = VIEW_VITALS_ROLES.includes(currentEmployeeRole);
+  const tabs = ALL_TABS.filter(
+    (tab) => canViewVitals || (tab.id !== "passport" && tab.id !== "vaccinations"),
+  );
   const [activeTab, setActiveTab] = useState<TabId>("general");
 
   return (

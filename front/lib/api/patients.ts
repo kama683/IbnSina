@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./api";
+import { apiGet, apiPatch, apiPost } from "./api";
 import type { Patient } from "@/lib/types";
 
 export type PatientsPage = {
@@ -48,6 +48,27 @@ export function getPatient(id: string): Promise<Patient> {
 /** Создать пациента (POST /api/patients). */
 export function createPatient(payload: PatientCreatePayload): Promise<Patient> {
   return apiPost<Patient>("/api/patients", payload);
+}
+
+export type PatientUpdatePayload = Partial<{
+  fullName: string;
+  iin: string;
+  birthDate: string;
+  gender: "М" | "Ж";
+  phone: string;
+  address: string;
+  area: string;
+  bloodType: string;
+}>;
+
+/** Этап 1, коммит 12 (docs/PHASE1_ANALYSIS.md §6 п.7) — правка
+ * демографических данных (PATCH /api/patients/{id}); медданные сюда не
+ * входят, у них свои эндпоинты. */
+export function updatePatient(
+  id: string,
+  payload: PatientUpdatePayload,
+): Promise<Patient> {
+  return apiPatch<Patient>(`/api/patients/${id}`, payload);
 }
 
 /** История приёмов пациента. */

@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { BedDouble, CalendarPlus, User } from "lucide-react";
+import PatientEditButton from "@/components/patients/profile/PatientEditButton";
+import type { EmployeeRole } from "@/lib/api/employees";
 import type { Patient } from "@/lib/types";
 
 type Props = {
   patient: Patient;
+  currentEmployeeRole: EmployeeRole;
 };
 
 function formatIin(iin: string) {
   return iin.replace(/(\d{6})(\d{6})/, "$1 $2");
 }
 
-export default function PatientProfileHeader({ patient }: Props) {
+export default function PatientProfileHeader({ patient, currentEmployeeRole }: Props) {
   const isInpatient = patient.careType === "inpatient" && patient.inpatient;
 
   const stats = isInpatient
@@ -84,13 +87,16 @@ export default function PatientProfileHeader({ patient }: Props) {
           </div>
         </div>
 
-        <Link
-          href={`/patients/${patient.id}/examination`}
-          className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-[#1a5c3a] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
-        >
-          <CalendarPlus className="h-4 w-4" />
-          {isInpatient ? "Открыть приём" : "Записать на приём"}
-        </Link>
+        <div className="flex shrink-0 flex-col gap-2 self-start sm:flex-row">
+          <PatientEditButton patient={patient} currentEmployeeRole={currentEmployeeRole} />
+          <Link
+            href={`/patients/${patient.id}/examination`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a5c3a] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            {isInpatient ? "Открыть приём" : "Записать на приём"}
+          </Link>
+        </div>
       </div>
     </section>
   );
