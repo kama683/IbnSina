@@ -21,6 +21,7 @@ import { NAV_ITEMS, ROLE_LABELS, isRoleAllowed, type NavItemConfig } from "@/lib
 
 type SidebarProps = {
   employee: Employee;
+  className?: string;
 };
 
 const ICONS: Record<NavItemConfig["icon"], React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -35,7 +36,7 @@ const ICONS: Record<NavItemConfig["icon"], React.ComponentType<{ size?: number; 
   refund: RotateCcw,
 };
 
-export default function Sidebar({ employee }: SidebarProps) {
+export default function Sidebar({ employee, className = "" }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -55,7 +56,9 @@ export default function Sidebar({ employee }: SidebarProps) {
   const items = NAV_ITEMS.filter((item) => isRoleAllowed(employee.role, item.roles));
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex ${className}`}
+    >
       {/* Логотип IbnSina + иконка пульса */}
       <div className="flex h-14 items-center gap-2.5 px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a5c3a]">

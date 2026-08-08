@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Printer } from "lucide-react";
 import InvoiceDetailContent from "@/components/invoices/InvoiceDetailContent";
 import InvoicePaymentsSection from "@/components/invoices/InvoicePaymentsSection";
 import { ApiError } from "@/lib/api/api";
@@ -30,21 +31,32 @@ export default async function InvoicePage({ params }: Props) {
 
     return (
       <div className="mx-auto max-w-[900px] space-y-5">
-        <div>
-          <p className="text-xs text-gray-400">
-            <Link href="/" className="hover:text-gray-600">
-              Главная
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs text-gray-400">
+              <Link href="/" className="hover:text-gray-600">
+                Главная
+              </Link>
+              {" / "}
+              <Link href={`/patients/${patient.id}`} className="hover:text-gray-600">
+                {patient.fullName}
+              </Link>
+              {" / "}
+              <span className="text-gray-600">Счёт № {invoice.invoiceNumber}</span>
+            </p>
+            <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-gray-900">
+              Счёт для {patient.fullName}
+            </h1>
+          </div>
+          {invoice.status !== "draft" && (
+            <Link
+              href={`/invoices/${invoice.id}/receipt`}
+              className="flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <Printer className="h-4 w-4" />
+              Квитанция
             </Link>
-            {" / "}
-            <Link href={`/patients/${patient.id}`} className="hover:text-gray-600">
-              {patient.fullName}
-            </Link>
-            {" / "}
-            <span className="text-gray-600">Счёт № {invoice.invoiceNumber}</span>
-          </p>
-          <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-gray-900">
-            Счёт для {patient.fullName}
-          </h1>
+          )}
         </div>
 
         <InvoiceDetailContent invoice={invoice} currentEmployeeRole={employee.role}>
