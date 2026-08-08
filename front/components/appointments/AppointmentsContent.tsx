@@ -22,7 +22,6 @@ type Props = {
   calendarWeek: CalendarWeek;
   doctorShortName: string;
   doctorOffice: string;
-  doctorFullName: string;
   weekOffset: number;
   patients: Patient[];
 };
@@ -33,7 +32,6 @@ export default function AppointmentsContent({
   calendarWeek,
   doctorShortName,
   doctorOffice,
-  doctorFullName,
   weekOffset,
   patients,
 }: Props) {
@@ -64,7 +62,6 @@ export default function AppointmentsContent({
       <AppointmentsToolbar
         view={view}
         onViewChange={setView}
-        doctorName={doctorFullName}
         listDate={listDate}
         onListDateChange={setListDate}
         patients={patients}

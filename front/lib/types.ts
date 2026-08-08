@@ -7,13 +7,18 @@ export type AppointmentStatus =
 export interface Appointment {
   id: string;
   patientId?: string;
+  employeeId?: string;
   date: string;
   time: string;
   patient: string;
   complaint: string;
   diagnosis: string | null;
   doctor: string;
+  createdBy: string | null;
   status: AppointmentStatus;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  cancellationReason: string | null;
 }
 
 export interface DoctorBadge {

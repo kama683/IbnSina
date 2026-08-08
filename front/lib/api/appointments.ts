@@ -55,17 +55,21 @@ export function updateAppointmentStatus(
 
 export type AppointmentCreatePayload = {
   patientId: string;
+  employeeId: string;
   date: string;
   time: string;
   complaint: string;
 };
 
-/** Записать пациента на приём (POST /api/appointments). */
+/** Записать пациента на приём (POST /api/appointments). Этап 1, коммит 3 —
+ * employeeId теперь обязателен, сервер сам перепроверяет, что это активный
+ * клиницист (docs/PHASE1_ANALYSIS.md §6). */
 export function createAppointment(
   payload: AppointmentCreatePayload,
 ): Promise<Appointment> {
   return apiPost<Appointment>("/api/appointments", {
     patientId: Number(payload.patientId),
+    employeeId: Number(payload.employeeId),
     date: payload.date,
     time: payload.time,
     complaint: payload.complaint,

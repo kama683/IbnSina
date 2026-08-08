@@ -82,7 +82,6 @@ export default async function AppointmentsPage({ searchParams }: Props) {
         calendarWeek={calendarWeek}
         doctorShortName={employee.shortName}
         doctorOffice={office}
-        doctorFullName={employee.fullName}
         weekOffset={weekOffset}
         patients={patientsPage.items}
       />

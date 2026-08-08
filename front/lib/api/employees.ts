@@ -27,3 +27,18 @@ export interface Employee {
 export function getCurrentEmployee(): Promise<Employee> {
   return apiGet<Employee>("/api/employees/me");
 }
+
+/** Этап 1, коммит 7 — список для селектора врача в форме записи. */
+export interface DoctorListItem {
+  id: number;
+  shortName: string;
+  area: string;
+  specialty: string;
+}
+
+/** GET /api/employees?role=doctor — активные клиницисты (включая
+ * head_doctor, у него тоже есть doctor_profile, см. docs/PHASE1_ANALYSIS.md
+ * §6.1 решение A). */
+export function getDoctors(): Promise<DoctorListItem[]> {
+  return apiGet<DoctorListItem[]>("/api/employees?role=doctor");
+}
