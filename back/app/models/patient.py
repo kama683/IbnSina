@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -21,8 +21,14 @@ class Patient(Base):
     address: Mapped[str | None] = mapped_column(String(300), nullable=True)
     blood_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     dispensary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Этап 1, коммит 1 — заполняется коммитом 6 (PATCH /api/patients/{id}).
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True
+    )
 
     appointments = relationship("Appointment", back_populates="patient")
+    updated_by = relationship("Employee", foreign_keys=[updated_by_id])
     diseases = relationship("PatientDisease", back_populates="patient", cascade="all, delete-orphan")
     allergies = relationship("PatientAllergy", back_populates="patient", cascade="all, delete-orphan")
     vaccinations = relationship("Vaccination", back_populates="patient", cascade="all, delete-orphan")

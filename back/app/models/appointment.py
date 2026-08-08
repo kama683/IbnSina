@@ -1,7 +1,7 @@
 import enum
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -34,8 +34,29 @@ class Appointment(Base):
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
 
+    # Этап 1, коммит 1 (docs/PHASE1_ANALYSIS.md §6) — все nullable, старые
+    # записи так и останутся с NULL, бэкфиллить нечем (полей не было).
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancelled_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True
+    )
+    cancellation_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
     patient = relationship("Patient", back_populates="appointments")
-    employee = relationship("Employee", back_populates="appointments")
+    # foreign_keys обязателен на всех трёх — с этого коммита у Appointment
+    # три FK на employees.id, без явного указания SQLAlchemy не сможет
+    # определить, какую колонку использовать для каждой связи.
+    employee = relationship(
+        "Employee", back_populates="appointments", foreign_keys=[employee_id]
+    )
+    # back_populates намеренно нет — Employee не обязан перечислять "приёмы,
+    # которые я создал/отменил", это read-only контекст поверх основной связи
+    # employee_id/employee (та back_populates'ится как обычно, см. выше).
+    created_by = relationship("Employee", foreign_keys=[created_by_id])
+    cancelled_by = relationship("Employee", foreign_keys=[cancelled_by_id])
     prescriptions = relationship("Prescription", back_populates="appointment", cascade="all, delete-orphan")
 
     @property

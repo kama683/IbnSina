@@ -61,6 +61,10 @@ class Employee(Base):
 
     doctor_profile = relationship("DoctorProfile", back_populates="employee", uselist=False)
     user = relationship("User", back_populates="employee", uselist=False)
-    appointments = relationship("Appointment", back_populates="employee")
+    appointments = relationship(
+        "Appointment",
+        back_populates="employee",
+        foreign_keys="[Appointment.employee_id]",
+    )
     hospitalizations = relationship("Hospitalization", back_populates="employee")
     schedules = relationship("Schedule", back_populates="employee")
