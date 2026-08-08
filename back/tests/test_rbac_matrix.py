@@ -142,6 +142,14 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.head_doctor})),
     ("PATCH", "/api/services/1",
      frozenset({R.head_doctor})),
+    # Этап 2, коммит 2 — владение сменой разбирается в хендлере (решение H),
+    # route-level guard тут только объединение допущенных ролей.
+    ("POST", "/api/cash-shifts",
+     frozenset({R.reception, R.head_doctor})),
+    ("GET", "/api/cash-shifts/current",
+     frozenset({R.reception, R.head_doctor})),
+    ("POST", "/api/cash-shifts/1/close",
+     frozenset({R.reception, R.head_doctor})),
 ]
 
 

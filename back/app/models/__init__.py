@@ -14,6 +14,7 @@ from app.models.doctor_profile import DoctorProfile
 from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
 from app.models.service import Service, ServiceCategory
+from app.models.cash_shift import CashShift, CashShiftStatus
 
 __all__ = [
     "DoctorEducation",
@@ -38,4 +39,6 @@ __all__ = [
     "AuditLog",
     "Service",
     "ServiceCategory",
+    "CashShift",
+    "CashShiftStatus",
 ]
