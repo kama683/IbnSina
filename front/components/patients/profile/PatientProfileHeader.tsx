@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BedDouble, CalendarPlus, User } from "lucide-react";
+import InvoiceCreateButton from "@/components/invoices/InvoiceCreateButton";
 import PatientEditButton from "@/components/patients/profile/PatientEditButton";
 import type { EmployeeRole } from "@/lib/api/employees";
 import type { Patient } from "@/lib/types";
@@ -89,6 +90,10 @@ export default function PatientProfileHeader({ patient, currentEmployeeRole }: P
 
         <div className="flex shrink-0 flex-col gap-2 self-start sm:flex-row">
           <PatientEditButton patient={patient} currentEmployeeRole={currentEmployeeRole} />
+          <InvoiceCreateButton
+            patientId={Number(patient.id)}
+            currentEmployeeRole={currentEmployeeRole}
+          />
           <Link
             href={`/patients/${patient.id}/examination`}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a5c3a] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
