@@ -29,6 +29,11 @@ export function getCurrentShift(): Promise<CashShift | null> {
   return apiGet<CashShift | null>("/api/cash-shifts/current");
 }
 
+/** Этап 2, коммит 13 — список смен (reception видит свои, head_doctor — все). */
+export function getShifts(): Promise<CashShift[]> {
+  return apiGet<CashShift[]>("/api/cash-shifts");
+}
+
 export function openShift(openingBalance: number): Promise<CashShift> {
   return apiPost<CashShift>("/api/cash-shifts", { openingBalance });
 }

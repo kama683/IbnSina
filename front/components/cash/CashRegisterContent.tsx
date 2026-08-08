@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ShiftReportCard from "@/components/cash/ShiftReportCard";
 import {
   closeShift,
   getShiftReport,
@@ -12,20 +13,26 @@ import { formatTiyn, tengeInputToTiyn } from "@/lib/currency";
 
 type Props = {
   initialShift: CashShift | null;
+  shiftHistory: CashShift[];
 };
 
 /** Этап 2, коммит 10 (docs/PHASE2_ANALYSIS.md) — открытие/закрытие кассовой
  * смены. Одна открытая смена на кассира одновременно — сервер сам вернёт 409
  * при повторном открытии (partial unique index в CashShift), здесь просто
  * показываем сообщение. После закрытия сразу подтягиваем отчёт по смене
- * (GET /cash-shifts/{id}/report, коммит 5) и показываем расхождение по кассе. */
-export default function CashRegisterContent({ initialShift }: Props) {
+ * (GET /cash-shifts/{id}/report, коммит 5) и показываем расхождение по кассе.
+ * Коммит 13: история смен ниже — клик по любой строке подтягивает и её
+ * отчёт тем же ShiftReportCard (для head_doctor — история включает чужие
+ * смены, GET /cash-shifts теперь отдаёт все; для reception — только свои). */
+export default function CashRegisterContent({ initialShift, shiftHistory }: Props) {
   const [shift, setShift] = useState(initialShift);
   const [report, setReport] = useState<ShiftReport | null>(null);
+  const [reportTitle, setReportTitle] = useState("Отчёт по смене");
   const [openingBalanceInput, setOpeningBalanceInput] = useState("0");
   const [actualCashInput, setActualCashInput] = useState("0");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyBusyId, setHistoryBusyId] = useState<number | null>(null);
 
   async function handleOpen() {
     setSaving(true);
@@ -50,10 +57,28 @@ export default function CashRegisterContent({ initialShift }: Props) {
       const closedReport = await getShiftReport(closed.id);
       setShift(null);
       setReport(closedReport);
+      setReportTitle("Отчёт по закрытой смене");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось закрыть смену");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleShowHistoryReport(historyShift: CashShift) {
+    setHistoryBusyId(historyShift.id);
+    try {
+      const shiftReport = await getShiftReport(historyShift.id);
+      setReport(shiftReport);
+      setReportTitle(
+        `Отчёт по смене от ${new Date(historyShift.openedAt).toLocaleDateString("ru-RU")}${
+          historyShift.cashierName ? ` · ${historyShift.cashierName}` : ""
+        }`,
+      );
+    } catch {
+      // тихо игнорируем — карточка отчёта просто не обновится
+    } finally {
+      setHistoryBusyId(null);
     }
   }
 
@@ -131,43 +156,59 @@ export default function CashRegisterContent({ initialShift }: Props) {
         )}
       </section>
 
-      {report && (
-        <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">Отчёт по закрытой смене</h2>
-          <dl className="mt-3 space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Наличными принято</dt>
-              <dd className="text-gray-900">{formatTiyn(report.cashTotal)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Картой принято</dt>
-              <dd className="text-gray-900">{formatTiyn(report.cardTotal)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Переводом принято</dt>
-              <dd className="text-gray-900">{formatTiyn(report.transferTotal)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Возвраты</dt>
-              <dd className="text-gray-900">{formatTiyn(report.refundsTotal)}</dd>
-            </div>
-            <div className="flex justify-between border-t border-gray-100 pt-1.5">
-              <dt className="text-gray-500">Ожидаемо в кассе</dt>
-              <dd className="text-gray-900">{formatTiyn(report.expectedCash)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-500">Фактически в кассе</dt>
-              <dd className="text-gray-900">
-                {report.shift.actualCash !== null ? formatTiyn(report.shift.actualCash) : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between font-medium">
-              <dt className={report.discrepancy ? "text-red-600" : "text-gray-700"}>Расхождение</dt>
-              <dd className={report.discrepancy ? "text-red-600" : "text-gray-900"}>
-                {report.discrepancy !== null ? formatTiyn(report.discrepancy) : "—"}
-              </dd>
-            </div>
-          </dl>
+      {report && <ShiftReportCard report={report} title={reportTitle} />}
+
+      {shiftHistory.length > 0 && (
+        <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-5 py-3">
+            <h2 className="text-sm font-semibold text-gray-900">История смен</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-gray-100 text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                  <th className="px-5 py-2.5">Открыта</th>
+                  <th className="px-5 py-2.5">Кассир</th>
+                  <th className="px-5 py-2.5">Статус</th>
+                  <th className="w-32 px-2 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {shiftHistory.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
+                  >
+                    <td className="px-5 py-3 text-sm text-gray-900">
+                      {new Date(row.openedAt).toLocaleString("ru-RU")}
+                    </td>
+                    <td className="px-5 py-3 text-sm text-gray-500">{row.cashierName ?? "—"}</td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                          row.status === "open"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {row.status === "open" ? "Открыта" : "Закрыта"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-3">
+                      <button
+                        type="button"
+                        disabled={historyBusyId === row.id}
+                        onClick={() => handleShowHistoryReport(row)}
+                        className="text-xs text-[#1a5c3a] hover:underline disabled:opacity-50"
+                      >
+                        Отчёт
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>

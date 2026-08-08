@@ -1,6 +1,6 @@
 import Link from "next/link";
 import CashRegisterContent from "@/components/cash/CashRegisterContent";
-import { getCurrentShift } from "@/lib/api/cash-shifts";
+import { getCurrentShift, getShifts } from "@/lib/api/cash-shifts";
 import { getCurrentEmployee } from "@/lib/api/employees";
 import { MANAGE_CASH_ROLES } from "@/lib/roles";
 
@@ -27,7 +27,9 @@ export default async function CashRegisterPage() {
     );
   }
 
-  const shift = await getCurrentShift();
+  const [shift, allShifts] = await Promise.all([getCurrentShift(), getShifts()]);
+  // Собственная открытая смена уже показана в карточке выше — в истории её дублировать не нужно.
+  const shiftHistory = allShifts.filter((row) => row.id !== shift?.id);
 
   return (
     <div className="mx-auto max-w-[700px] space-y-5">
@@ -42,7 +44,7 @@ export default async function CashRegisterPage() {
         <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-gray-900">Касса</h1>
       </div>
 
-      <CashRegisterContent initialShift={shift} />
+      <CashRegisterContent initialShift={shift} shiftHistory={shiftHistory} />
     </div>
   );
 }

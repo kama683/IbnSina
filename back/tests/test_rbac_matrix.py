@@ -148,6 +148,11 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.reception, R.head_doctor})),
     ("GET", "/api/cash-shifts/current",
      frozenset({R.reception, R.head_doctor})),
+    # Этап 2, коммит 13 — список смен для страницы отчётов; unconditional
+    # (reception видит только свои через фильтр в хендлере, но сам запрос
+    # не 403-ится), в отличие от report/1 выше тут нет владения по id.
+    ("GET", "/api/cash-shifts",
+     frozenset({R.reception, R.head_doctor})),
     ("POST", "/api/cash-shifts/1/close",
      frozenset({R.reception, R.head_doctor})),
     # Этап 2, коммит 3.

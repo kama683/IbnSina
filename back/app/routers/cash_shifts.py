@@ -60,6 +60,26 @@ def _db_now(db: Session) -> datetime:
     return db.execute(text("SELECT now()")).scalar()
 
 
+@router.get("", dependencies=[Depends(_MANAGE_SHIFT)])
+def list_shifts(
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    """Этап 2, коммит 13 (docs/PHASE2_ANALYSIS.md, п.13 плана) — список смен
+    для страницы отчётов: reception видит только свои (историю своих
+    закрытых смен, не только текущую открытую — GET /current для этого не
+    годится), head_doctor — все. Этот эндпоинт отсутствовал в коммите 2
+    backend-плана (там был только /current); без него "любая смена" для
+    head_doctor (п.13) физически нечем было бы выбрать — id смены неоткуда
+    взять на фронте. Добавлен здесь, а не отдельным backend-коммитом,
+    так как нужен исключительно для этой фронтовой страницы."""
+    query = db.query(CashShift)
+    if current_employee.role != EmployeeRole.head_doctor:
+        query = query.filter(CashShift.cashier_employee_id == current_employee.id)
+    shifts = query.order_by(CashShift.opened_at.desc()).all()
+    return [serialize_shift(shift) for shift in shifts]
+
+
 @router.post("", dependencies=[Depends(_MANAGE_SHIFT)])
 def open_shift(
     payload: CashShiftOpenIn,

@@ -14,6 +14,7 @@ import {
   Tag,
   Wallet,
   RotateCcw,
+  BarChart3,
 } from "lucide-react";
 import { logout } from "@/lib/api/auth";
 import type { Employee } from "@/lib/api/employees";
@@ -34,6 +35,7 @@ const ICONS: Record<NavItemConfig["icon"], React.ComponentType<{ size?: number; 
   services: Tag,
   cash: Wallet,
   refund: RotateCcw,
+  reports: BarChart3,
 };
 
 export default function Sidebar({ employee, className = "" }: SidebarProps) {

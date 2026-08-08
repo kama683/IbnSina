@@ -91,7 +91,8 @@ export type NavItemConfig = {
     | "settings"
     | "services"
     | "cash"
-    | "refund";
+    | "refund"
+    | "reports";
   roles: EmployeeRole[] | "all";
 };
 
@@ -103,6 +104,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { href: "/services", label: "Услуги", icon: "services", roles: VIEW_SERVICES_ROLES },
   { href: "/cash-register", label: "Касса", icon: "cash", roles: MANAGE_CASH_ROLES },
   { href: "/refunds", label: "Возвраты", icon: "refund", roles: MANAGE_CASH_ROLES },
+  { href: "/reports/daily", label: "Отчёт за день", icon: "reports", roles: VIEW_DAILY_REPORT_ROLES },
   { href: "/profile", label: "Профиль", icon: "profile", roles: HAS_DOCTOR_PROFILE_ROLES },
   { href: "/settings", label: "Настройки", icon: "settings", roles: "all" },
 ];

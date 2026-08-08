@@ -110,3 +110,28 @@ def test_reception_cannot_close_colleague_shift_but_head_doctor_can(client, db_s
         f"/api/cash-shifts/{shift_id}/close", headers=head_headers, json={"actualCash": 0}
     )
     assert allowed.status_code == 200, allowed.text
+
+
+def test_list_shifts_reception_sees_own_only_head_doctor_sees_all(client, db_session):
+    """Этап 2, коммит 13 — GET /api/cash-shifts (список для страницы отчётов)."""
+    owner = _make_employee(db_session, email="shift-list-owner@test.local", role=EmployeeRole.reception)
+    other = _make_employee(db_session, email="shift-list-other@test.local", role=EmployeeRole.reception)
+    head_doctor = _make_employee(db_session, email="shift-list-head@test.local", role=EmployeeRole.head_doctor)
+
+    owner_headers = _login(client, "shift-list-owner@test.local")
+    client.post("/api/cash-shifts", headers=owner_headers, json={"openingBalance": 0})
+
+    other_headers = _login(client, "shift-list-other@test.local")
+    client.post("/api/cash-shifts", headers=other_headers, json={"openingBalance": 0})
+
+    owner_list = client.get("/api/cash-shifts", headers=owner_headers)
+    assert owner_list.status_code == 200, owner_list.text
+    assert all(row["cashierEmployeeId"] == owner.id for row in owner_list.json())
+    assert len(owner_list.json()) >= 1
+
+    head_headers = _login(client, "shift-list-head@test.local")
+    head_list = client.get("/api/cash-shifts", headers=head_headers)
+    assert head_list.status_code == 200
+    cashier_ids = {row["cashierEmployeeId"] for row in head_list.json()}
+    assert owner.id in cashier_ids
+    assert other.id in cashier_ids
