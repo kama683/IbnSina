@@ -1,3 +1,5 @@
+from app.models.medication import Medication
+
 from app.models.doctor_education import DoctorEducation
 from app.models.patient import Patient
 from app.models.patient_diseases import DiseaseTagVariant, PatientDisease
@@ -55,3 +57,4 @@ __all__ = [
     "RefundRequest",
     "RefundRequestStatus",
 ]
+
