@@ -14,6 +14,7 @@ class Medication(Base):
     manufacturer: Mapped[str | None] = mapped_column(String(200), nullable=True)
     min_stock_level: Mapped[int | None] = mapped_column(nullable=True)
     is_controlled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # relationships placeholder for future (batches, movements)
     # batches = relationship("StockBatch", back_populates="medication")

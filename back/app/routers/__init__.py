@@ -1,0 +1,12 @@
+from app.routers.appointments import router as appointments
+from app.routers.auth import router as auth
+from app.routers.cash_shifts import router as cash_shifts
+from app.routers.employees import router as employees
+from app.routers.icd10 import router as icd10
+from app.routers.invoices import router as invoices
+from app.routers.patients import router as patients
+from app.routers.refund_requests import router as refund_requests
+from app.routers.reports import router as reports
+from app.routers.search import router as search
+from app.routers.services import router as services
+from app.routers.medication import router as medication

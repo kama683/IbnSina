@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.medication import Medication
 
 
-def create_medication(db: Session, *, name: str, code: str | None = None, unit: str | None = None, manufacturer: str | None = None, min_stock_level: int | None = None, is_controlled: bool = False) -> Medication:
+def create_medication(db: Session, *, name: str, code: str | None = None, unit: str | None = None, manufacturer: str | None = None, min_stock_level: int | None = None, is_controlled: bool = False, is_active: bool = True) -> Medication:
     med = Medication(
         name=name,
         code=code,
@@ -10,6 +10,7 @@ def create_medication(db: Session, *, name: str, code: str | None = None, unit: 
         manufacturer=manufacturer,
         min_stock_level=min_stock_level,
         is_controlled=is_controlled,
+        is_active=is_active,
     )
     db.add(med)
     db.commit()
