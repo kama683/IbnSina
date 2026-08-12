@@ -14,6 +14,8 @@ from app.models.doctor_profile import DoctorProfile
 from app.models.refresh_token import RefreshToken
 from app.models.audit_log import AuditLog
 
+from app.models.medication import Medication
+
 __all__ = [
     "DoctorEducation",
     "Patient",
@@ -35,4 +37,5 @@ __all__ = [
     "DoctorProfile",
     "RefreshToken",
     "AuditLog",
+    "Medication",
 ]
