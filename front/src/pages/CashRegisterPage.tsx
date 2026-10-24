@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import CashDashboard from "@/components/cash/CashDashboard";
 import InvoicesTab from "@/components/cash/InvoicesTab";
 import MyRefundRequestsTab from "@/components/cash/MyRefundRequestsTab";
 import ShiftTab from "@/components/cash/ShiftTab";
@@ -22,6 +23,8 @@ export default function CashRegisterPage() {
   return (
     <div className="mx-auto max-w-[900px] space-y-5">
       <PageHeader title="Касса" />
+
+      <CashDashboard />
 
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-6" aria-label="Разделы кассы">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRefresh } from "@/lib/use-refresh";
 import ShiftReportCard from "@/components/cash/ShiftReportCard";
 import {
   closeShift,
@@ -31,6 +32,7 @@ export default function CashRegisterContent({ initialShift, shiftHistory }: Prop
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyBusyId, setHistoryBusyId] = useState<number | null>(null);
+  const refresh = useRefresh();
 
   async function handleOpen() {
     setSaving(true);
@@ -39,6 +41,7 @@ export default function CashRegisterContent({ initialShift, shiftHistory }: Prop
       const opened = await openShift(tengeInputToTiyn(openingBalanceInput));
       setShift(opened);
       setReport(null);
+      void refresh(); // сводка кассы и «Стойка»
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось открыть смену");
     } finally {
@@ -56,6 +59,7 @@ export default function CashRegisterContent({ initialShift, shiftHistory }: Prop
       setShift(null);
       setReport(closedReport);
       setReportTitle("Отчёт по закрытой смене");
+      void refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось закрыть смену");
     } finally {
