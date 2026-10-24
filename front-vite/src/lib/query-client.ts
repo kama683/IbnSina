@@ -13,6 +13,13 @@ export const queryClient = new QueryClient({
       // Раньше (RSC) данные грузились при заходе на страницу, а не при
       // возврате во вкладку; не меняем поведение.
       refetchOnWindowFocus: false,
+      // Кэш не переживает уход со страницы: каждый заход грузит данные заново,
+      // как серверные компоненты. Это не прихоть — часть компонентов
+      // (ServicesContent, CashRegisterContent, ProfileContent, ExaminationForm)
+      // копирует данные из props в useState один раз; устаревший кэш на входе
+      // показал бы им старый список и не обновил бы после фонового refetch.
+      // Сессия (employee) кэшируется отдельно — см. employeeQueryOptions.
+      gcTime: 0,
     },
   },
 });

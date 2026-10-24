@@ -9,11 +9,15 @@ import NotFound from "@/components/ui/NotFound";
 import {
   ANY_STAFF_ROLES,
   HAS_DOCTOR_PROFILE_ROLES,
+  MANAGE_CASH_ROLES,
   VIEW_SCHEDULE_ROLES,
   VIEW_SERVICES_ROLES,
 } from "@/lib/roles";
 import AppointmentsPage from "@/pages/AppointmentsPage";
+import CashRegisterPage from "@/pages/CashRegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
+import InvoicePage from "@/pages/InvoicePage";
+import InvoiceReceiptPage from "@/pages/InvoiceReceiptPage";
 import LoginPage from "@/pages/LoginPage";
 import PatientExaminationPage from "@/pages/PatientExaminationPage";
 import PatientProfilePage from "@/pages/PatientProfilePage";
@@ -76,6 +80,13 @@ export const routes = [
                 element: <RequireRole allow={HAS_DOCTOR_PROFILE_ROLES} />,
                 children: [{ path: "profile", element: <ProfilePage /> }],
               },
+              {
+                element: <RequireRole allow={MANAGE_CASH_ROLES} />,
+                children: [{ path: "cash-register", element: <CashRegisterPage /> }],
+              },
+              // Счета без ролевой группы, как и в Next: доступ решает бэкенд.
+              { path: "invoices/:id", element: <InvoicePage /> },
+              { path: "invoices/:id/receipt", element: <InvoiceReceiptPage /> },
               { path: "settings", element: <SettingsPage /> },
               { path: "*", element: <NotFound /> },
             ],
