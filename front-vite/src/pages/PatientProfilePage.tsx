@@ -9,7 +9,7 @@ import {
   getPatientVaccinations,
 } from "@/lib/api/patients";
 import { useEmployee } from "@/lib/auth/employee-context";
-import { VIEW_VITALS_ROLES } from "@/lib/roles";
+import { VIEW_MEDICAL_ROLES, VIEW_VITALS_ROLES } from "@/lib/roles";
 
 export default function PatientProfilePage() {
   const { id = "" } = useParams();
@@ -17,6 +17,7 @@ export default function PatientProfilePage() {
   // Показатели и прививки бэкенд отдаёт не всем ролям (reception — 403), поэтому
   // для них эти запросы не отправляем вовсе.
   const canViewVitals = VIEW_VITALS_ROLES.includes(employee.role);
+  const canViewMedical = VIEW_MEDICAL_ROLES.includes(employee.role);
 
   const patient = useQuery({
     queryKey: ["patients", "detail", id],
@@ -25,6 +26,7 @@ export default function PatientProfilePage() {
   const history = useQuery({
     queryKey: ["patients", id, "history"],
     queryFn: () => getPatientHistory(id),
+    enabled: canViewMedical,
   });
   const healthMetrics = useQuery({
     queryKey: ["patients", id, "health-metrics"],
@@ -42,10 +44,10 @@ export default function PatientProfilePage() {
       queries={[patient, history, healthMetrics, vaccinations]}
       notFoundMessage="Пациент не найден."
     >
-      {patient.data && history.data && (
+      {patient.data && (
         <PatientProfileView
           patient={patient.data}
-          history={history.data}
+          history={history.data ?? []}
           healthMetrics={healthMetrics.data ?? []}
           vaccinations={vaccinations.data ?? []}
           currentEmployeeRole={employee.role}

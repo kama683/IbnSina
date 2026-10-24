@@ -42,6 +42,17 @@ export const VIEW_STATS_ROLES: EmployeeRole[] = ["doctor", "head_doctor"];
 // запрашивает то, что бэкенд всё равно не отдаст.
 export const VIEW_VITALS_ROLES: EmployeeRole[] = ["doctor", "nurse", "head_doctor"];
 
+// = _VIEW_MEDICAL в patients.py (GET .../history, .../visit-history) — мед.
+// данные закрыты для accountant, хотя саму карточку (_ANY_STAFF) он видит.
+// Vite-миграция: без этой проверки у бухгалтера карточка пациента целиком
+// падала на 403 истории (так было и в Next — необработанная ошибка).
+export const VIEW_MEDICAL_ROLES: EmployeeRole[] = [
+  "reception",
+  "doctor",
+  "nurse",
+  "head_doctor",
+];
+
 // = _ANY_STAFF в patients.py/search.py — все, кроме admin.
 export const ANY_STAFF_ROLES: EmployeeRole[] = [
   "reception",

@@ -102,6 +102,16 @@ describe("карточка пациента", () => {
     expect(requested()).not.toContain("/api/patients/5/vaccinations");
   });
 
+  it("бухгалтер: карточка открывается, история болезни (403 на бэкенде) не запрашивается", async () => {
+    mockBackend(makeEmployee("accountant"), { "/api/patients/5": makePatient() });
+
+    renderApp("/patients/5");
+
+    expect((await screen.findAllByText("Иванов Иван Иванович")).length).toBeGreaterThan(0);
+    expect(requested()).not.toContain("/api/patients/5/history");
+    expect(requested()).not.toContain("/api/patients/5/health-metrics");
+  });
+
   it("несуществующий пациент (404) → «Пациент не найден»", async () => {
     mockBackend(reception, {
       "/api/patients/999": () => json(404, { detail: "Пациент не найден" }),
