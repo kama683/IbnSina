@@ -9,6 +9,8 @@ type Props = {
   onCreated: (patient: Patient) => void;
   defaultArea?: string;
   prefilledIin?: string;
+  /** Если регистратор искал по фамилии — подставляем её в ФИО. */
+  prefilledFullName?: string;
 };
 
 const EMPTY_FORM = {
@@ -33,6 +35,7 @@ export default function PatientCreateModal({
   onCreated,
   defaultArea = "",
   prefilledIin = "",
+  prefilledFullName = "",
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export default function PatientCreateModal({
   // на каждое открытие модалки.
   useEffect(() => {
     if (open) {
-      setForm({ ...EMPTY_FORM, iin: prefilledIin, area: defaultArea });
+      setForm({ ...EMPTY_FORM, iin: prefilledIin, fullName: prefilledFullName, area: defaultArea });
       setError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

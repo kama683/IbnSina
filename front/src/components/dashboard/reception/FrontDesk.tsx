@@ -1,7 +1,9 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, UserPlus } from "lucide-react";
+import { CheckCircle2, Search, UserPlus } from "lucide-react";
+import AppointmentBookingModal from "@/components/appointments/AppointmentBookingModal";
+import PatientCreateModal from "@/components/patients/PatientCreateModal";
 import {
   formatVisitDate,
   initialsOf,
@@ -9,7 +11,8 @@ import {
   patientSummaryLine,
 } from "@/components/dashboard/reception/format";
 import { getPatientHistory, getPatients } from "@/lib/api/patients";
-import type { Patient } from "@/lib/types";
+import { useRefresh } from "@/lib/use-refresh";
+import type { Appointment, Patient } from "@/lib/types";
 
 type Mode =
   | { kind: "idle" }
@@ -41,6 +44,12 @@ export default function FrontDesk() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [mode, setMode] = useState<Mode>({ kind: "idle" });
+  // Запись и создание карточки — модалки поверх стойки: регистратор не уходит
+  // с экрана. Созданный пациент сразу попадает в запись (один поток).
+  const [bookingPatient, setBookingPatient] = useState<Patient | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const refresh = useRefresh();
 
   const selected = mode.kind === "found" ? mode.patient : null;
   const lastVisit = useLastVisit(selected);
@@ -52,10 +61,20 @@ export default function FrontDesk() {
     inputRef.current?.focus();
   }
 
+  function handleBooked(appointment: Appointment) {
+    setBookingPatient(null);
+    setConfirmation(
+      `Записан на ${appointment.time}, ${formatVisitDate(appointment.date)} · ${appointment.doctor}`,
+    );
+    void refresh(); // очередь, счётчики и «врачи сейчас» на стойке
+    reset();
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const query = value.trim().replace(/\s+/g, " ");
     if (!query) return;
+    setConfirmation(null);
 
     // Ровно 12 цифр — точный поиск по ИИН (пробелы внутри не мешают).
     const iin = query.replace(/\s/g, "");
@@ -97,6 +116,7 @@ export default function FrontDesk() {
               value={value}
               onChange={(event) => {
                 setValue(event.target.value);
+                setConfirmation(null);
                 if (mode.kind !== "idle" && mode.kind !== "loading") setMode({ kind: "idle" });
               }}
               onKeyDown={(event) => event.key === "Escape" && reset()}
@@ -159,12 +179,10 @@ export default function FrontDesk() {
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            {/* Модалка записи — следующий шаг работ (см. docs): до тех пор кнопка неактивна */}
             <button
               type="button"
-              disabled
-              title="Запись прямо отсюда появится на следующем шаге"
-              className="rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              onClick={() => setBookingPatient(mode.patient)}
+              className="rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
             >
               Записать
             </button>
@@ -186,15 +204,45 @@ export default function FrontDesk() {
           </div>
           <button
             type="button"
-            disabled
-            title="Создание и запись одним потоком появятся на следующем шаге"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50"
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
           >
             <UserPlus className="h-4 w-4" />
             Завести карточку
           </button>
         </div>
       )}
+
+      {confirmation && (
+        <p
+          role="status"
+          className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-800"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {confirmation}
+        </p>
+      )}
+
+      <AppointmentBookingModal
+        open={bookingPatient !== null}
+        patient={bookingPatient}
+        onClose={() => setBookingPatient(null)}
+        onBooked={handleBooked}
+      />
+
+      <PatientCreateModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        prefilledIin={mode.kind === "not-found" && isFullIin(mode.query) ? mode.query : ""}
+        prefilledFullName={mode.kind === "not-found" && !isFullIin(mode.query) ? mode.query : ""}
+        onCreated={(patient) => {
+          // Без перехода на карточку: создание и запись — один поток. Если
+          // запись отменят, пациент остаётся на стойке с кнопкой «Записать».
+          setCreateOpen(false);
+          setMode({ kind: "found", patient });
+          setBookingPatient(patient);
+        }}
+      />
     </section>
   );
 }

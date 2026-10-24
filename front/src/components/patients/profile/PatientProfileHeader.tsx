@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { BedDouble, CalendarPlus, User } from "lucide-react";
+import { BedDouble, CalendarPlus, CheckCircle2, Stethoscope, User } from "lucide-react";
+import AppointmentBookingModal from "@/components/appointments/AppointmentBookingModal";
 import InvoiceCreateButton from "@/components/invoices/InvoiceCreateButton";
 import PatientEditButton from "@/components/patients/profile/PatientEditButton";
 import type { EmployeeRole } from "@/lib/api/employees";
+import { BOOK_FROM_CARD_ROLES, OPEN_EXAMINATION_ROLES } from "@/lib/roles";
+import { useRefresh } from "@/lib/use-refresh";
 import type { Patient } from "@/lib/types";
 
 type Props = {
@@ -15,6 +19,11 @@ function formatIin(iin: string) {
 }
 
 export default function PatientProfileHeader({ patient, currentEmployeeRole }: Props) {
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const refresh = useRefresh();
+  const canBook = BOOK_FROM_CARD_ROLES.includes(currentEmployeeRole);
+  const canOpenExamination = OPEN_EXAMINATION_ROLES.includes(currentEmployeeRole);
   const isInpatient = patient.careType === "inpatient" && patient.inpatient;
 
   const stats = isInpatient
@@ -94,15 +103,52 @@ export default function PatientProfileHeader({ patient, currentEmployeeRole }: P
             patientId={Number(patient.id)}
             currentEmployeeRole={currentEmployeeRole}
           />
-          <Link
-            to={`/patients/${patient.id}/examination`}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a5c3a] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
-          >
-            <CalendarPlus className="h-4 w-4" />
-            {isInpatient ? "Открыть приём" : "Записать на приём"}
-          </Link>
+          {canBook && (
+            <button
+              type="button"
+              onClick={() => setBookingOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a5c3a] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Записать на приём
+            </button>
+          )}
+          {/* Кнопка вела на форму осмотра и называлась «Записать» — запись и
+              осмотр разные действия: врачу — осмотр, регистратору — запись. */}
+          {canOpenExamination && (
+            <Link
+              to={`/patients/${patient.id}/examination`}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1a5c3a] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#14472e]"
+            >
+              <Stethoscope className="h-4 w-4" />
+              Открыть осмотр
+            </Link>
+          )}
         </div>
       </div>
+
+      {confirmation && (
+        <p
+          role="status"
+          className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-5 py-2.5 text-sm font-medium text-emerald-800"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {confirmation}
+        </p>
+      )}
+
+      {canBook && (
+        <AppointmentBookingModal
+          open={bookingOpen}
+          patient={patient}
+          onClose={() => setBookingOpen(false)}
+          onBooked={(appointment) => {
+            setBookingOpen(false);
+            setConfirmation(`Записан на ${appointment.time}, ${appointment.date} · ${appointment.doctor}`);
+            void refresh(); // «Последний приём» и история болезни
+          }}
+        />
+      )}
     </section>
   );
 }

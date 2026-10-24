@@ -37,9 +37,12 @@ export function shortOffice(office: string): string {
   return trimmed.replace(/^кабинет\s*/i, "каб. ");
 }
 
-/** «Участок №4» → «участок 4». */
+/** «Участок №4» → «участок 4»; голое «1» (так участок заведён у части
+ * пациентов) → «участок 1»; всё остальное — как есть. */
 export function areaLabel(area: string): string {
-  return area.replace(/^участок\s*№?\s*/i, "участок ").toLowerCase();
+  const trimmed = area.trim();
+  if (/^\d+$/.test(trimmed)) return `участок ${trimmed}`;
+  return trimmed.replace(/^участок\s*№?\s*/i, "участок ").toLowerCase();
 }
 
 /** Инициалы для кружка: «Иванов Иван Иванович» → «ИИ». */

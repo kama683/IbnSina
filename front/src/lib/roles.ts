@@ -68,6 +68,17 @@ export const ANY_STAFF_ROLES: EmployeeRole[] = [
 // одной лишь роли, см. AppointmentActions.tsx.
 export const MANAGE_ANY_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "head_doctor"];
 
+// Кто может записывать на приём = _MULTI_DOCTOR_BOOKING в appointments.py
+// (POST /appointments и GET /appointments/available-slots). У медсестры оба
+// запроса отвечают 403 — ей кнопку записи не показываем.
+export const BOOK_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "doctor", "head_doctor"];
+
+// Кнопка «Записать на приём» в шапке карточки пациента: у врача на её месте
+// «Открыть осмотр» (его работа — вести приём, а не записывать).
+export const BOOK_FROM_CARD_ROLES: EmployeeRole[] = ["reception", "head_doctor"];
+// Форма осмотра = _VIEW_EXAMINATION в patients.py.
+export const OPEN_EXAMINATION_ROLES: EmployeeRole[] = ["doctor"];
+
 // Этап 1, коммит 10 (docs/PHASE1_ANALYSIS.md §6 п.2, решение по §5.2) — чек-ин
 // на живой очереди ("Начать"/"Завершить"). = _MANAGE_EXAMINATION в
 // appointments.py — права не расширяем, reception/nurse только смотрят.

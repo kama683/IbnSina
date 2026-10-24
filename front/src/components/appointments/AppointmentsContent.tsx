@@ -16,7 +16,7 @@ import {
   getCurrentWeekIsoRange,
   getDateForWeekOffset,
 } from "@/lib/calendar-utils";
-import { HAS_DOCTOR_PROFILE_ROLES } from "@/lib/roles";
+import { BOOK_APPOINTMENT_ROLES, HAS_DOCTOR_PROFILE_ROLES } from "@/lib/roles";
 import { useRefresh } from "@/lib/use-refresh";
 
 function toIsoDate(value: Date): string {
@@ -61,9 +61,13 @@ export default function AppointmentsContent({
     enabled: hasDoctorProfile,
     select: (profile) => profile.office,
   });
+  // Список пациентов нужен только форме записи — тем, кто не может записывать
+  // (медсестра), его не запрашиваем.
+  const canBook = BOOK_APPOINTMENT_ROLES.includes(currentEmployeeRole);
   const patients = useQuery({
     queryKey: ["patients", "list", { page: 1, limit: 100 }],
     queryFn: () => getPatients({ page: 1, limit: 100 }),
+    enabled: canBook,
   });
 
   // Список и календарь грузятся отдельно от страницы: смена даты/недели не
@@ -94,6 +98,7 @@ export default function AppointmentsContent({
         onListDateChange={setListDate}
         patients={patients.data?.items ?? []}
         onAppointmentCreated={() => void refresh()}
+        canBook={canBook}
       />
       {view === "list" ? (
         list.isError ? (
