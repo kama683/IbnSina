@@ -10,11 +10,13 @@ import {
   ANY_STAFF_ROLES,
   HAS_DOCTOR_PROFILE_ROLES,
   MANAGE_CASH_ROLES,
+  VIEW_DAILY_REPORT_ROLES,
   VIEW_SCHEDULE_ROLES,
   VIEW_SERVICES_ROLES,
 } from "@/lib/roles";
 import AppointmentsPage from "@/pages/AppointmentsPage";
 import CashRegisterPage from "@/pages/CashRegisterPage";
+import DailyReportPage from "@/pages/DailyReportPage";
 import DashboardPage from "@/pages/DashboardPage";
 import InvoicePage from "@/pages/InvoicePage";
 import InvoiceReceiptPage from "@/pages/InvoiceReceiptPage";
@@ -23,6 +25,7 @@ import PatientExaminationPage from "@/pages/PatientExaminationPage";
 import PatientProfilePage from "@/pages/PatientProfilePage";
 import PatientsPage from "@/pages/PatientsPage";
 import ProfilePage from "@/pages/ProfilePage";
+import RefundsPage from "@/pages/RefundsPage";
 import ServicesPage from "@/pages/ServicesPage";
 import SettingsPage from "@/pages/SettingsPage";
 import QueuePage from "@/pages/QueuePage";
@@ -82,7 +85,14 @@ export const routes = [
               },
               {
                 element: <RequireRole allow={MANAGE_CASH_ROLES} />,
-                children: [{ path: "cash-register", element: <CashRegisterPage /> }],
+                children: [
+                  { path: "cash-register", element: <CashRegisterPage /> },
+                  { path: "refunds", element: <RefundsPage /> },
+                ],
+              },
+              {
+                element: <RequireRole allow={VIEW_DAILY_REPORT_ROLES} />,
+                children: [{ path: "reports/daily", element: <DailyReportPage /> }],
               },
               // Счета без ролевой группы, как и в Next: доступ решает бэкенд.
               { path: "invoices/:id", element: <InvoicePage /> },
