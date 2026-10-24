@@ -6,13 +6,21 @@ import AppLayout from "@/components/layout/AppLayout";
 import RootLayout from "@/components/layout/RootLayout";
 import RouteError from "@/components/layout/RouteError";
 import NotFound from "@/components/ui/NotFound";
-import { ANY_STAFF_ROLES, VIEW_SCHEDULE_ROLES } from "@/lib/roles";
+import {
+  ANY_STAFF_ROLES,
+  HAS_DOCTOR_PROFILE_ROLES,
+  VIEW_SCHEDULE_ROLES,
+  VIEW_SERVICES_ROLES,
+} from "@/lib/roles";
 import AppointmentsPage from "@/pages/AppointmentsPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import PatientExaminationPage from "@/pages/PatientExaminationPage";
 import PatientProfilePage from "@/pages/PatientProfilePage";
 import PatientsPage from "@/pages/PatientsPage";
+import ProfilePage from "@/pages/ProfilePage";
+import ServicesPage from "@/pages/ServicesPage";
+import SettingsPage from "@/pages/SettingsPage";
 import QueuePage from "@/pages/QueuePage";
 
 // Структура зеркалит app/ из Next: /login — публичный, всё остальное внутри
@@ -60,6 +68,15 @@ export const routes = [
                 path: "patients/:id/examination",
                 element: <PatientExaminationPage />,
               },
+              {
+                element: <RequireRole allow={VIEW_SERVICES_ROLES} />,
+                children: [{ path: "services", element: <ServicesPage /> }],
+              },
+              {
+                element: <RequireRole allow={HAS_DOCTOR_PROFILE_ROLES} />,
+                children: [{ path: "profile", element: <ProfilePage /> }],
+              },
+              { path: "settings", element: <SettingsPage /> },
               { path: "*", element: <NotFound /> },
             ],
           },
