@@ -1,12 +1,16 @@
 import { createBrowserRouter } from "react-router-dom";
 import RedirectIfAuthed from "@/components/auth/RedirectIfAuthed";
 import RequireAuth from "@/components/auth/RequireAuth";
+import RequireRole from "@/components/auth/RequireRole";
 import AppLayout from "@/components/layout/AppLayout";
 import RootLayout from "@/components/layout/RootLayout";
 import RouteError from "@/components/layout/RouteError";
 import NotFound from "@/components/ui/NotFound";
+import { VIEW_SCHEDULE_ROLES } from "@/lib/roles";
+import AppointmentsPage from "@/pages/AppointmentsPage";
 import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
+import QueuePage from "@/pages/QueuePage";
 
 // Структура зеркалит app/ из Next: /login — публичный, всё остальное внутри
 // RequireAuth (= proxy.ts) и AppLayout (= app/(doctors)/layout.tsx).
@@ -33,6 +37,13 @@ export const routes = [
             element: <AppLayout />,
             children: [
               { index: true, element: <DashboardPage /> },
+              {
+                element: <RequireRole allow={VIEW_SCHEDULE_ROLES} />,
+                children: [
+                  { path: "appointments", element: <AppointmentsPage /> },
+                  { path: "queue", element: <QueuePage /> },
+                ],
+              },
               { path: "*", element: <NotFound /> },
             ],
           },
