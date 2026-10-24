@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import type { Employee, EmployeeRole } from "@/lib/api/employees";
-import type { Appointment } from "@/lib/types";
+import type { Appointment, Patient } from "@/lib/types";
 import { routes } from "@/router";
 
 export const fetchMock = vi.fn<typeof fetch>();
@@ -38,6 +38,29 @@ export function makeAppointment(overrides: Partial<Appointment> = {}): Appointme
     cancelledAt: null,
     cancelledBy: null,
     cancellationReason: null,
+    ...overrides,
+  };
+}
+
+export function makePatient(overrides: Partial<Patient> = {}): Patient {
+  return {
+    id: "5",
+    fullName: "Иванов Иван Иванович",
+    shortName: "Иванов И.И.",
+    iin: "900101300123",
+    birthDate: "1990-01-01",
+    ageLabel: "36 лет",
+    gender: "М",
+    bloodType: "A(II) Rh+",
+    phone: "+7 700 000 00 00",
+    address: "г. Алматы",
+    area: "Участок №3",
+    lastAppointment: null,
+    dispensary: false,
+    careType: "ambulatory",
+    allergies: [],
+    chronicDiseases: [],
+    diseases: [],
     ...overrides,
   };
 }
