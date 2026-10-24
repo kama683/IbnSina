@@ -16,14 +16,10 @@ back/**/*.py[cod]
 back/.env
 !back/.env.example
 
-# Node / Next.js (front/)
+# Node / Vite (front/)
 front/node_modules/
-front/.next/
-front/out/
-front/build/
-front/.vercel
+front/dist/
 front/*.tsbuildinfo
-front/next-env.d.ts
 front/.env*
 !front/.env.example
 

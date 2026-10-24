@@ -26,8 +26,8 @@ python seed.py
 uvicorn app.main:app --reload --port 8000
 ```
 
-The frontend expects the API at `http://localhost:8000` by default
-(`NEXT_PUBLIC_API_URL` in `front/.env.local`).
+The frontend (Vite, `front/`) proxies `/api` to `http://localhost:8000` in dev,
+so no CORS or API URL setup is needed (`VITE_DEV_API_TARGET` overrides the target).
 
 ## Auth
 

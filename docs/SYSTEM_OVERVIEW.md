@@ -1,5 +1,12 @@
 # IbnSina — документация системы
 
+> **Актуальность.** Документ описывает систему на момент до Этапа 0 плана
+> развития: разделы про роли, авторизацию (cookie `auth_token`, JWT на 7 дней,
+> отсутствие refresh) и «тестов нет» устарели — см. `docs/PHASE0_ANALYSIS.md` …
+> `PHASE2_ANALYSIS.md`. Фронтенд позже переписан с Next.js на Vite
+> (`docs/VITE_MIGRATION_PLAN.md`, `front/AGENTS.md`); описание Next-специфики
+> ниже (RSC, `proxy.ts`, `next/headers`) тоже историческое.
+
 Информационная система городской поликлиники: рабочее место врача для ведения
 приёмов, живой очереди, карточек пациентов и осмотров. Ниже — полное описание
 того, что система делает, как устроена бизнес-логика, какие роли есть и что
@@ -20,7 +27,7 @@
 
 | Слой | Технология |
 |---|---|
-| Frontend | Next.js 16 (App Router, React Server Components), TypeScript, Tailwind CSS |
+| Frontend | Vite + React 19 (SPA), TypeScript, React Router, TanStack Query, Tailwind CSS (ранее Next.js 16) |
 | Backend | FastAPI, SQLAlchemy ORM, Pydantic-схемы |
 | БД | PostgreSQL, миграции через Alembic |
 | Авторизация | JWT (HS256), пароли — bcrypt |
