@@ -1,4 +1,5 @@
 import { useState } from "react";
+import TimePicker from "@/components/ui/TimePicker";
 import { X } from "lucide-react";
 import {
   cancelAppointment,
@@ -162,28 +163,13 @@ export default function AppointmentActions({
                     className="w-full rounded-lg border border-gray-200 px-3 py-2"
                   />
                 </label>
-                <label className="text-sm">
-                  <span className="mb-1 block text-gray-600">Время</span>
-                  <select
-                    value={time}
-                    disabled={slotsLoading}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 disabled:bg-gray-50"
-                  >
-                    <option value="">
-                      {slotsLoading
-                        ? "Загрузка…"
-                        : slots.length === 0
-                          ? "Нет свободных слотов"
-                          : "Выберите время"}
-                    </option>
-                    {slots.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <TimePicker
+                  value={time}
+                  onChange={setTime}
+                  slots={slots}
+                  loading={slotsLoading}
+                  placeholder={slots.length === 0 ? "Нет свободных слотов" : "Выберите время"}
+                />
               </div>
             )}
 

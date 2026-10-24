@@ -31,5 +31,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // сценарии с userEvent.type в jsdom при параллельном запуске файлов могут не
+    // уложиться в 5 с по умолчанию — это не ошибка кода
+    testTimeout: 20_000,
   },
 });

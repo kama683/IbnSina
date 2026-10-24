@@ -73,7 +73,10 @@ export const json = (status: number, body: unknown = {}) =>
 
 /** Мок-бэкенд: путь (с query) → тело ответа или функция, возвращающая Response.
  * Неописанный путь = 500, чтобы тест падал, а не молча получал пустоту. */
-export type Handlers = Record<string, unknown | (() => Response | Promise<Response>)>;
+export type Handlers = Record<
+  string,
+  unknown | ((url: string, init?: RequestInit) => Response | Promise<Response>)
+>;
 
 export function mockBackend(employee: Employee, handlers: Handlers = {}) {
   const all: Handlers = { "/api/employees/me": employee, ...handlers };
@@ -88,7 +91,9 @@ export function mockBackend(employee: Employee, handlers: Handlers = {}) {
     // null — валидное тело ответа (например, /appointments/current без приёма)
     if (matched === undefined) return json(500, { detail: `нет мока для ${key}` });
     const handler = all[matched];
-    if (typeof handler === "function") return (handler as () => Response | Promise<Response>)();
+    if (typeof handler === "function") {
+      return (handler as (url: string, init?: RequestInit) => Response | Promise<Response>)(url, init);
+    }
     return json(200, handler);
   });
 }
