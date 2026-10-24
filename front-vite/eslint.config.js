@@ -19,6 +19,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Перенос из Next 1:1: в унаследованных компонентах setState в эффекте
+      // (синхронизация формы с props) — предупреждаем, но не блокируем линт.
+      "react-hooks/set-state-in-effect": "warn",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     },
   },
