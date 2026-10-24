@@ -9,6 +9,7 @@ import NotFound from "@/components/ui/NotFound";
 import {
   ANY_STAFF_ROLES,
   HAS_DOCTOR_PROFILE_ROLES,
+  DECIDE_REFUND_ROLES,
   MANAGE_CASH_ROLES,
   VIEW_DAILY_REPORT_ROLES,
   VIEW_SCHEDULE_ROLES,
@@ -85,10 +86,13 @@ export const routes = [
               },
               {
                 element: <RequireRole allow={MANAGE_CASH_ROLES} />,
-                children: [
-                  { path: "cash-register", element: <CashRegisterPage /> },
-                  { path: "refunds", element: <RefundsPage /> },
-                ],
+                children: [{ path: "cash-register", element: <CashRegisterPage /> }],
+              },
+              // Очередь решений по возвратам — только у главврача; регистратор
+              // видит свои заявки вкладкой «Мои заявки» в кассе.
+              {
+                element: <RequireRole allow={DECIDE_REFUND_ROLES} />,
+                children: [{ path: "refunds", element: <RefundsPage /> }],
               },
               {
                 element: <RequireRole allow={VIEW_DAILY_REPORT_ROLES} />,

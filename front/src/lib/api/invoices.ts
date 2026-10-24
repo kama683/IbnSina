@@ -52,10 +52,37 @@ export type InvoiceItemInput = {
   discountAmount?: number;
 };
 
-/** Этап 2, коммит 8 (docs/PHASE2_ANALYSIS.md) — счёт. */
-export function getInvoices(patientId?: number): Promise<Invoice[]> {
-  const suffix = patientId ? `?patientId=${patientId}` : "";
-  return apiGet<Invoice[]>(`/api/invoices${suffix}`);
+/** Строка списка счетов: к счёту добавлены имя пациента, оплаченная сумма и
+ * признак «скидка выше порога ждёт главврача» (только у черновика). */
+export interface InvoiceListRow extends Invoice {
+  patientName: string | null;
+  paidAmount: number;
+  awaitingApproval: boolean;
+}
+
+export type InvoiceListQuery = {
+  patientId?: number;
+  status?: InvoiceStatus[];
+  /** Даты создания включительно, YYYY-MM-DD. */
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+};
+
+/** Этап 2, коммит 8 (docs/PHASE2_ANALYSIS.md) — счёт. Без limit бэкенд отдаёт
+ * все счета клиники — для экранов используйте limit (и limit+1, чтобы узнать,
+ * есть ли следующая страница). */
+export function getInvoices(query: InvoiceListQuery = {}): Promise<InvoiceListRow[]> {
+  const params = new URLSearchParams();
+  if (query.patientId) params.set("patientId", String(query.patientId));
+  if (query.status?.length) params.set("status", query.status.join(","));
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.offset) params.set("offset", String(query.offset));
+  const suffix = params.toString();
+  return apiGet<InvoiceListRow[]>(`/api/invoices${suffix ? `?${suffix}` : ""}`);
 }
 
 export function getInvoice(id: number): Promise<Invoice> {

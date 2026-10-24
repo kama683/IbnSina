@@ -1,34 +1,51 @@
-import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import InvoicesTab from "@/components/cash/InvoicesTab";
+import MyRefundRequestsTab from "@/components/cash/MyRefundRequestsTab";
+import ShiftTab from "@/components/cash/ShiftTab";
 import PageHeader from "@/components/layout/PageHeader";
-import CashRegisterContent from "@/components/cash/CashRegisterContent";
-import QueryBoundary from "@/components/ui/QueryBoundary";
-import { getCurrentShift, getShifts } from "@/lib/api/cash-shifts";
+
+const TABS = [
+  { id: "shift", label: "Смена" },
+  { id: "invoices", label: "Счета" },
+  { id: "requests", label: "Мои заявки" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 // Доступ по роли (MANAGE_CASH_ROLES) проверяет <RequireRole> в router.tsx.
+// Вкладка — в URL (?tab=invoices): на неё ведут ссылки с главной («все счета»).
 export default function CashRegisterPage() {
-  const shift = useQuery({
-    queryKey: ["cash-shifts", "current"],
-    queryFn: getCurrentShift,
-  });
-  const allShifts = useQuery({
-    queryKey: ["cash-shifts", "list"],
-    queryFn: getShifts,
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get("tab");
+  const tab: TabId = TABS.some((item) => item.id === requested) ? (requested as TabId) : "shift";
 
   return (
-    <div className="mx-auto max-w-[700px] space-y-5">
+    <div className="mx-auto max-w-[900px] space-y-5">
       <PageHeader title="Касса" />
 
-      <QueryBoundary queries={[shift, allShifts]}>
-        {allShifts.data && (
-          <CashRegisterContent
-            initialShift={shift.data ?? null}
-            // Собственная открытая смена уже показана в карточке выше — в
-            // истории её дублировать не нужно.
-            shiftHistory={allShifts.data.filter((row) => row.id !== shift.data?.id)}
-          />
-        )}
-      </QueryBoundary>
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-6" aria-label="Разделы кассы">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSearchParams(item.id === "shift" ? {} : { tab: item.id })}
+              aria-current={tab === item.id ? "page" : undefined}
+              className={`shrink-0 border-b-2 pb-3 text-sm font-medium transition-colors ${
+                tab === item.id
+                  ? "border-[#1a5c3a] text-[#1a5c3a]"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {tab === "shift" && <ShiftTab />}
+      {tab === "invoices" && <InvoicesTab />}
+      {tab === "requests" && <MyRefundRequestsTab />}
     </div>
   );
 }

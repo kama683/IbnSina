@@ -45,13 +45,13 @@ describe("возвраты", () => {
     expect(screen.getByRole("button", { name: "Отклонить" })).toBeInTheDocument();
   });
 
-  it("ресепшен видит очередь, но решать не может", async () => {
+  it("ресепшен: очередь решений недоступна (его заявки — вкладка в кассе)", async () => {
     mockBackend(reception, { "/api/refund-requests": [pending] });
 
     renderApp("/refunds");
 
-    expect(await screen.findByText(/Услуга не оказана/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Одобрить" })).toBeNull();
+    expect(await screen.findByText("Нет доступа")).toBeInTheDocument();
+    expect(requested()).not.toContain("/api/refund-requests");
   });
 
   it("врач: «Нет доступа»", async () => {

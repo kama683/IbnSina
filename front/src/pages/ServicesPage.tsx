@@ -18,7 +18,8 @@ export default function ServicesPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-5">
-      <PageHeader title="Услуги" />
+      {/* Регистратору это справочник цен (управлять услугами он не может) */}
+      <PageHeader title={employee.role === "reception" ? "Прейскурант" : "Услуги"} />
 
       <QueryBoundary queries={[services]}>
         {services.data && (

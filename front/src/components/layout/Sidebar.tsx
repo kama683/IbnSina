@@ -13,17 +13,24 @@ import {
   Wallet,
   RotateCcw,
   BarChart3,
+  Clock,
+  IdCard,
+  Banknote,
 } from "lucide-react";
 import { logout } from "@/lib/api/auth";
 import type { Employee } from "@/lib/api/employees";
-import { NAV_ITEMS, ROLE_LABELS, isRoleAllowed, type NavItemConfig } from "@/lib/roles";
+import { ROLE_LABELS, navSectionsForRole, type NavIcon } from "@/lib/roles";
 
 type SidebarProps = {
   employee: Employee;
   className?: string;
 };
 
-const ICONS: Record<NavItemConfig["icon"], React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
+const ICONS: Record<NavIcon, React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
+  desk: Users,
+  clock: Clock,
+  id: IdCard,
+  banknote: Banknote,
   dashboard: LayoutDashboard,
   calendar: Calendar,
   queue: MonitorCheck,
@@ -56,7 +63,7 @@ export default function Sidebar({ employee, className = "" }: SidebarProps) {
     }
   }
 
-  const items = NAV_ITEMS.filter((item) => isRoleAllowed(employee.role, item.roles));
+  const sections = navSectionsForRole(employee.role);
 
   return (
     <aside
@@ -73,17 +80,19 @@ export default function Sidebar({ employee, className = "" }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pt-2">
-        <NavGroup title="Меню">
-          {items.map((item) => (
-            <NavItem
-              key={item.href}
-              href={item.href}
-              icon={ICONS[item.icon]}
-              label={item.label}
-              pathname={pathname}
-            />
-          ))}
-        </NavGroup>
+        {sections.map((section) => (
+          <NavGroup key={section.title} title={section.title}>
+            {section.items.map((item) => (
+              <NavItem
+                key={item.href}
+                href={item.href}
+                icon={ICONS[item.icon]}
+                label={item.label}
+                pathname={pathname}
+              />
+            ))}
+          </NavGroup>
+        ))}
       </nav>
 
       {/* Профиль сотрудника внизу — данные приходят из сессии (RequireAuth) */}
@@ -113,10 +122,9 @@ function NavGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-5">
-      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-        {title}
-      </p>
+    <div className="mb-4">
+      {/* Заголовок секции: не ссылка, приглушённый, 11px */}
+      <p className="mb-1 px-3 text-[11px] font-medium text-gray-400">{title}</p>
       <ul className="space-y-0.5">{children}</ul>
     </div>
   );

@@ -35,6 +35,15 @@ function mockBackend({ authed }: { authed: boolean }) {
       return json(401, { detail: "Refresh-токен отсутствует" });
     }
     if (url === "/api/search?q=") return json(200, { patients: [], appointments: [] });
+    if (url === "/api/reports/reception-summary") {
+      return json(200, {
+        date: "2026-10-25",
+        shift: null,
+        queue: { waiting: 0, inProgress: 0 },
+        doctors: [],
+        invoices: { unpaidCount: 0, awaitingApprovalCount: 0, awaitingPayment: [] },
+      });
+    }
     return json(404);
   });
 }
@@ -81,7 +90,9 @@ describe("маршруты и гварды", () => {
 
     renderAt("/");
 
-    expect(await screen.findByText(/Добрый день, Иван Петрович/)).toBeInTheDocument();
+    // у регистратора главная — рабочее место «Стойка», без врачебного приветствия
+    expect(await screen.findByText("Стойка регистратуры")).toBeInTheDocument();
+    expect(screen.queryByText(/Добрый день/)).toBeNull();
     // reception видит «Приёмы», но не «Отчёт за день» (только head_doctor)
     expect(screen.getByRole("link", { name: "Приёмы" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Отчёт за день" })).toBeNull();
@@ -103,7 +114,7 @@ describe("маршруты и гварды", () => {
     renderAt("/no-such-page");
 
     expect(await screen.findByText("Страница не найдена")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Дашборд" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Стойка" })).toBeInTheDocument();
   });
 
   it("RequireRole: запрещённой роли — «Нет доступа», разрешённой — контент", async () => {

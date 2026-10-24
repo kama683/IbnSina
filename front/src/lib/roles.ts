@@ -90,20 +90,27 @@ export const APPROVE_DISCOUNT_ROLES: EmployeeRole[] = ["head_doctor"];
 export const DECIDE_REFUND_ROLES: EmployeeRole[] = ["head_doctor"];
 export const VIEW_DAILY_REPORT_ROLES: EmployeeRole[] = ["head_doctor"];
 
+export type NavIcon =
+  | "dashboard"
+  | "calendar"
+  | "queue"
+  | "patients"
+  | "profile"
+  | "settings"
+  | "services"
+  | "cash"
+  | "refund"
+  | "reports"
+  // иконки меню регистратуры (см. NAV_OVERRIDES)
+  | "desk"
+  | "clock"
+  | "id"
+  | "banknote";
+
 export type NavItemConfig = {
   href: string;
   label: string;
-  icon:
-    | "dashboard"
-    | "calendar"
-    | "queue"
-    | "patients"
-    | "profile"
-    | "settings"
-    | "services"
-    | "cash"
-    | "refund"
-    | "reports";
+  icon: NavIcon;
   roles: EmployeeRole[] | "all";
 };
 
@@ -114,16 +121,67 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { href: "/patients", label: "Пациенты", icon: "patients", roles: ANY_STAFF_ROLES },
   { href: "/services", label: "Услуги", icon: "services", roles: VIEW_SERVICES_ROLES },
   { href: "/cash-register", label: "Касса", icon: "cash", roles: MANAGE_CASH_ROLES },
-  { href: "/refunds", label: "Возвраты", icon: "refund", roles: MANAGE_CASH_ROLES },
+  // Заявки на возврат решает только главврач; регистратор видит свои заявки
+  // вкладкой внутри /cash-register, отдельного пункта меню у него нет.
+  { href: "/refunds", label: "Возвраты", icon: "refund", roles: DECIDE_REFUND_ROLES },
   { href: "/reports/daily", label: "Отчёт за день", icon: "reports", roles: VIEW_DAILY_REPORT_ROLES },
   { href: "/profile", label: "Профиль", icon: "profile", roles: HAS_DOCTOR_PROFILE_ROLES },
   { href: "/settings", label: "Настройки", icon: "settings", roles: "all" },
 ];
 
+type NavOverride = { label?: string; icon?: NavIcon };
+
+/** Подписи и иконки, которые для конкретной роли отличаются от общих.
+ * Регистратору «Дашборд» — это рабочее место («Стойка»), а «Услуги» — справочник
+ * цен, которым он не управляет («Прейскурант»). */
+const NAV_OVERRIDES: Partial<Record<EmployeeRole, Record<string, NavOverride>>> = {
+  reception: {
+    "/": { label: "Стойка", icon: "desk" },
+    "/queue": { icon: "clock" },
+    "/patients": { icon: "id" },
+    "/cash-register": { icon: "banknote" },
+    "/services": { label: "Прейскурант" },
+  },
+};
+
+type NavSectionConfig = { title: string; hrefs: string[] };
+
+/** Секции меню. Роль без записи здесь получает одну секцию «Меню» — как было. */
+const NAV_SECTIONS: Partial<Record<EmployeeRole, NavSectionConfig[]>> = {
+  reception: [
+    { title: "Приём пациентов", hrefs: ["/", "/appointments", "/queue", "/patients"] },
+    { title: "Деньги", hrefs: ["/cash-register", "/services"] },
+    { title: "Прочее", hrefs: ["/settings"] },
+  ],
+};
+
+export type NavSection = { title: string; items: NavItemConfig[] };
+
 export function isRoleAllowed(role: EmployeeRole, allowed: EmployeeRole[] | "all"): boolean {
   return allowed === "all" || allowed.includes(role);
 }
 
+/** Пункты меню роли с учётом её подписей и иконок. */
 export function navItemsForRole(role: EmployeeRole): NavItemConfig[] {
-  return NAV_ITEMS.filter((item) => isRoleAllowed(role, item.roles));
+  const overrides = NAV_OVERRIDES[role] ?? {};
+  return NAV_ITEMS.filter((item) => isRoleAllowed(role, item.roles)).map((item) => ({
+    ...item,
+    ...overrides[item.href],
+  }));
+}
+
+/** Меню роли, разбитое на секции. Пустая секция не возвращается. */
+export function navSectionsForRole(role: EmployeeRole): NavSection[] {
+  const items = navItemsForRole(role);
+  const config = NAV_SECTIONS[role];
+  if (!config) return [{ title: "Меню", items }];
+
+  return config
+    .map((section) => ({
+      title: section.title,
+      items: section.hrefs
+        .map((href) => items.find((item) => item.href === href))
+        .filter((item): item is NavItemConfig => item !== undefined),
+    }))
+    .filter((section) => section.items.length > 0);
 }

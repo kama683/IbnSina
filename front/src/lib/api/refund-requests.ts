@@ -17,9 +17,15 @@ export interface RefundRequest {
 }
 
 /** Этап 2, коммит 11 (docs/PHASE2_ANALYSIS.md) — заявки на возврат. */
-export function getRefundRequests(status?: RefundRequestStatus): Promise<RefundRequest[]> {
-  const suffix = status ? `?status=${status}` : "";
-  return apiGet<RefundRequest[]>(`/api/refund-requests${suffix}`);
+export function getRefundRequests(
+  status?: RefundRequestStatus,
+  options: { mine?: boolean } = {},
+): Promise<RefundRequest[]> {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (options.mine) params.set("mine", "true");
+  const suffix = params.toString();
+  return apiGet<RefundRequest[]>(`/api/refund-requests${suffix ? `?${suffix}` : ""}`);
 }
 
 export function createRefundRequest(

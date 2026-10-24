@@ -43,18 +43,41 @@ describe("дашборд", () => {
     expect(screen.getByText(/Каб\. 12/)).toBeInTheDocument();
   });
 
-  it("ресепшен не запрашивает статистику и профиль врача", async () => {
+  it("ресепшен видит «Стойку», а не врачебные виджеты", async () => {
     mockBackend(reception, {
-      "/api/appointments/current": null,
-      "/api/appointments/today": [],
+      "/api/reports/reception-summary": {
+        date: "2026-10-25",
+        shift: null,
+        queue: { waiting: 0, inProgress: 0 },
+        doctors: [],
+        invoices: { unpaidCount: 0, awaitingApprovalCount: 0, awaitingPayment: [] },
+      },
     });
 
     renderApp("/");
 
-    expect(await screen.findByText("Быстрый поиск пациента")).toBeInTheDocument();
+    expect(await screen.findByText("Стойка регистратуры")).toBeInTheDocument();
+    for (const gone of ["Текущий приём", "Ближайшие", "Приёмы на сегодня", "Быстрый поиск пациента"]) {
+      expect(screen.queryByText(gone)).toBeNull();
+    }
+    expect(screen.queryByText(/Добрый день/)).toBeNull();
     const requested = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(requested).toContain("/api/reports/reception-summary");
+    expect(requested).not.toContain("/api/appointments/today");
     expect(requested).not.toContain("/api/appointments/stats/week");
     expect(requested.some((url) => url.includes("profile"))).toBe(false);
+  });
+
+  it("медсестра остаётся на врачебном дашборде", async () => {
+    mockBackend(makeEmployee("nurse"), {
+      "/api/appointments/current": null,
+      "/api/appointments/today": [makeAppointment()],
+    });
+
+    renderApp("/");
+
+    expect(await screen.findByText("Приёмы на сегодня")).toBeInTheDocument();
+    expect(screen.getByText(/Добрый день/)).toBeInTheDocument();
   });
 
   it("бухгалтеру — заглушка без запросов расписания", async () => {
