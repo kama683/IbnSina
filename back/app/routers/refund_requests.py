@@ -57,11 +57,15 @@ def _get_request_or_404(db: Session, request_id: int) -> RefundRequest:
 @router.get("", dependencies=[Depends(_REQUEST_REFUND)])
 def list_refund_requests(
     status_filter: RefundRequestStatus | None = Query(None, alias="status"),
+    mine: bool = Query(False, description="только заявки текущего сотрудника"),
     db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
 ):
     query = db.query(RefundRequest).options(*_LOAD_OPTIONS)
     if status_filter is not None:
         query = query.filter(RefundRequest.status == status_filter)
+    if mine:
+        query = query.filter(RefundRequest.requested_by_id == current_employee.id)
     requests = query.order_by(RefundRequest.created_at.desc()).all()
     return [serialize_refund_request(row) for row in requests]
 

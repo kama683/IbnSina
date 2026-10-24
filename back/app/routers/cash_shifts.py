@@ -165,6 +165,22 @@ def close_shift(
     return serialize_shift(shift)
 
 
+def shift_payments(db: Session, shift: CashShift) -> list[Payment]:
+    """Платежи смены = созданные её кассиром в промежутке [opened_at; closed_at
+    или сейчас] — по всем способам оплаты. Единая точка для отчёта смены и
+    сводки регистратуры, чтобы цифры не могли разойтись."""
+    window_end = shift.closed_at or _db_now(db)
+    return (
+        db.query(Payment)
+        .filter(
+            Payment.created_by_id == shift.cashier_employee_id,
+            Payment.created_at >= shift.opened_at,
+            Payment.created_at <= window_end,
+        )
+        .all()
+    )
+
+
 @router.get("/{shift_id}/report", dependencies=[Depends(_MANAGE_SHIFT)])
 def get_shift_report(
     shift_id: int,
@@ -185,16 +201,7 @@ def get_shift_report(
     shift = _get_shift_or_404(db, shift_id)
     _assert_can_manage(shift, current_employee)
 
-    window_end = shift.closed_at or _db_now(db)
-    payments = (
-        db.query(Payment)
-        .filter(
-            Payment.created_by_id == shift.cashier_employee_id,
-            Payment.created_at >= shift.opened_at,
-            Payment.created_at <= window_end,
-        )
-        .all()
-    )
+    payments = shift_payments(db, shift)
 
     cash_total = sum(p.amount for p in payments if p.method == PaymentMethod.cash)
     card_total = sum(p.amount for p in payments if p.method == PaymentMethod.card)

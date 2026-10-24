@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -169,16 +169,87 @@ def _effective_discount_percent(invoice: Invoice) -> float:
     return total_discount / full_price * 100
 
 
+def discount_awaits_approval(invoice: Invoice) -> bool:
+    """Скидка выше порога без подтверждения главврача. Выставить такой счёт
+    нельзя (issue вернёт 403), а позиции правятся только в черновике — значит,
+    «ждёт главврача» бывает только у черновика."""
+    return (
+        invoice.status == InvoiceStatus.draft
+        and invoice.discount_approved_by_id is None
+        and _effective_discount_percent(invoice) > settings.default_discount_threshold_percent
+    )
+
+
+def paid_amounts(db: Session, invoice_ids: list[int]) -> dict[int, int]:
+    """Net оплачено по счетам (возвраты — минус), одним запросом."""
+    if not invoice_ids:
+        return {}
+    rows = (
+        db.query(Payment.invoice_id, func.sum(Payment.amount))
+        .filter(Payment.invoice_id.in_(invoice_ids))
+        .group_by(Payment.invoice_id)
+        .all()
+    )
+    return {invoice_id: int(total) for invoice_id, total in rows}
+
+
+def _parse_status_filter(values: list[str] | None) -> list[InvoiceStatus] | None:
+    """?status=unpaid,partial и ?status=unpaid&status=partial — одно и то же."""
+    if not values:
+        return None
+    parsed: list[InvoiceStatus] = []
+    for raw in values:
+        for part in raw.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                parsed.append(InvoiceStatus(part))
+            except ValueError:
+                raise HTTPException(status_code=422, detail=f"Неизвестный статус счёта: {part}")
+    return parsed or None
+
+
 @router.get("", dependencies=[Depends(_MANAGE_INVOICE)])
 def list_invoices(
     patient_id: int | None = Query(None, alias="patientId"),
+    status_filter: list[str] | None = Query(None, alias="status"),
+    created_from: date | None = Query(None, alias="from"),
+    created_to: date | None = Query(None, alias="to"),
+    limit: int | None = Query(None, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Invoice).options(*_INVOICE_LOAD_OPTIONS)
+    """Список счетов. Без limit отдаёт все (как раньше); для экранов с
+    пагинацией клиент просит limit+1 и по лишней строке узнаёт, есть ли
+    следующая страница. В строки добавлены patientName, paidAmount и
+    awaitingApproval (скидка ждёт главврача)."""
+    query = db.query(Invoice).options(joinedload(Invoice.patient), *_INVOICE_LOAD_OPTIONS)
     if patient_id is not None:
         query = query.filter(Invoice.patient_id == patient_id)
-    invoices = query.order_by(Invoice.created_at.desc()).all()
-    return [serialize_invoice(invoice) for invoice in invoices]
+    statuses = _parse_status_filter(status_filter)
+    if statuses:
+        query = query.filter(Invoice.status.in_(statuses))
+    if created_from is not None:
+        query = query.filter(Invoice.created_at >= datetime.combine(created_from, datetime.min.time()))
+    if created_to is not None:
+        query = query.filter(Invoice.created_at <= datetime.combine(created_to, datetime.max.time()))
+    query = query.order_by(Invoice.created_at.desc(), Invoice.id.desc())
+    if limit is not None:
+        query = query.offset(offset).limit(limit)
+    elif offset:
+        query = query.offset(offset)
+    invoices = query.all()
+    paid = paid_amounts(db, [invoice.id for invoice in invoices])
+    return [
+        {
+            **serialize_invoice(invoice),
+            "patientName": invoice.patient.short_name if invoice.patient else None,
+            "paidAmount": paid.get(invoice.id, 0),
+            "awaitingApproval": discount_awaits_approval(invoice),
+        }
+        for invoice in invoices
+    ]
 
 
 @router.get("/{invoice_id}", dependencies=[Depends(_MANAGE_INVOICE)])

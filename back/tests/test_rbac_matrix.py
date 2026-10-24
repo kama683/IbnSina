@@ -158,6 +158,8 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
     # Этап 2, коммит 3.
     ("GET", "/api/invoices",
      frozenset({R.reception, R.head_doctor})),
+    ("GET", "/api/invoices?status=unpaid,partial&limit=5",
+     frozenset({R.reception, R.head_doctor})),
     ("GET", "/api/invoices/1",
      frozenset({R.reception, R.head_doctor})),
     ("POST", "/api/invoices",
@@ -187,8 +189,13 @@ _ENDPOINTS: list[tuple[str, str, frozenset[EmployeeRole]]] = [
      frozenset({R.head_doctor})),
     ("GET", "/api/reports/daily?date=2026-08-08",
      frozenset({R.head_doctor})),
+    # Рабочее место регистратуры: сводка одним запросом, роли как у кассы.
+    ("GET", "/api/reports/reception-summary",
+     frozenset({R.reception, R.head_doctor})),
     # Этап 2, коммит 6.
     ("GET", "/api/refund-requests",
+     frozenset({R.reception, R.head_doctor})),
+    ("GET", "/api/refund-requests?mine=true",
      frozenset({R.reception, R.head_doctor})),
     ("POST", "/api/refund-requests",
      frozenset({R.reception, R.head_doctor})),
