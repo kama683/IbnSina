@@ -155,3 +155,8 @@ export function apiPost<T>(
 ): Promise<T> {
   return request<T>("POST", path, body, init);
 }
+
+export function apiDelete<T>(path: string, init?: RequestInit): Promise<T> {
+  return request<T>("DELETE", path, undefined, init);
+}
+

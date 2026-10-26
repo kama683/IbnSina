@@ -51,6 +51,68 @@ describe("услуги", () => {
     expect(requested()).toContain("/api/services");
   });
 
+  it("админ: видит «Добавить услугу» и неактивные, как главврач", async () => {
+    mockBackend(makeEmployee("admin"), { "/api/services?includeInactive=true": [service] });
+
+    renderApp("/services");
+
+    expect(await screen.findByRole("button", { name: /Добавить услугу/ })).toBeInTheDocument();
+  });
+
+  it("удаление: модалка подтверждения, после DELETE строка исчезает", async () => {
+    mockBackend(makeEmployee("head_doctor"), {
+      "/api/services?includeInactive=true": [service],
+      "DELETE /api/services/1": { id: 1 },
+    });
+
+    renderApp("/services");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Удалить Консультация терапевта" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Удалить услугу?")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Удалить" }));
+
+    expect(await screen.findByText("Прейскурант пуст")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("удаление: 409 — «Невозможно удалить», можно только отключить", async () => {
+    mockBackend(makeEmployee("head_doctor"), {
+      "/api/services?includeInactive=true": [service],
+      "DELETE /api/services/1": () =>
+        json(409, { detail: "Услуга уже есть в счетах — удалить нельзя, отключите её" }),
+      "PATCH /api/services/1": { ...service, isActive: false },
+    });
+
+    renderApp("/services");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Удалить Консультация терапевта" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Удалить" }));
+
+    expect(await within(dialog).findByText("Невозможно удалить услугу")).toBeInTheDocument();
+    expect(within(dialog).getByText(/можете только отключить/)).toBeInTheDocument();
+    // услуга осталась в таблице
+    expect(screen.getByText("Консультация терапевта")).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Отключить услугу" }));
+
+    expect(await screen.findByText("Отключена")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("врач и медсестра: «Нет доступа» (прейскурант им закрыт)", async () => {
+    for (const role of ["doctor", "nurse"] as const) {
+      mockBackend(makeEmployee(role));
+      const { unmount } = renderApp("/services");
+      expect(await screen.findByText("Нет доступа")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("бухгалтер: «Нет доступа» (прейскурант закрыт даже на чтение)", async () => {
     mockBackend(makeEmployee("accountant"));
 
@@ -64,14 +126,12 @@ describe("профиль врача", () => {
   const doctor = makeEmployee("doctor");
   const profile = {
     ...doctor,
-    area: "Участок №3",
     office: "Каб. 12",
     badges: [],
-    contacts: { phone: "+7 700 111 22 33", email: "doc@clinic.kz", workplace: "Поликлиника 12" },
-    metrics: { patientsInArea: 100, appointmentsInMay: 20, dispensary: 5, experienceYears: 10 },
+    contacts: { phone: "+7 700 111 22 33", email: "doc@clinic.kz" },
+    metrics: { appointmentsInMay: 20, experienceYears: 10 },
     professional: {
       specialty: "Эндокринолог",
-      qualificationCategory: "Высшая",
       licenseNumber: "L-1",
       licenseValidUntil: "2030-01-01",
       certificateNumber: "C-1",
@@ -79,7 +139,6 @@ describe("профиль врача", () => {
       about: "О враче",
     },
     schedule: [],
-    education: [],
   } satisfies DoctorProfile;
 
   it("врач видит профиль", async () => {
@@ -87,8 +146,10 @@ describe("профиль врача", () => {
 
     renderApp("/profile");
 
-    expect(await screen.findByText("Профиль врача")).toBeInTheDocument();
     expect(await screen.findByText("doc@clinic.kz")).toBeInTheDocument();
+    // настройки — тут же, отдельной страницы больше нет
+    expect(screen.getByText("Уведомления")).toBeInTheDocument();
+    expect(screen.getByText("О системе")).toBeInTheDocument();
   });
 
   it("сохранение шлёт PATCH с изменёнными контактами и перезапрашивает профиль", async () => {
@@ -120,21 +181,26 @@ describe("профиль врача", () => {
     });
   });
 
-  it("медсестре профиль врача недоступен", async () => {
-    mockBackend(makeEmployee("nurse"));
+  it("медсестре вместо профиля врача — карточка учётной записи и настройки", async () => {
+    const nurse = makeEmployee("nurse");
+    mockBackend(nurse);
 
     renderApp("/profile");
 
-    expect(await screen.findByText("Нет доступа")).toBeInTheDocument();
+    // в боковой панели — краткое имя, в карточке профиля — полное ФИО
+    expect(await screen.findByText(nurse.fullName)).toBeInTheDocument();
+    expect(screen.getByText("Уведомления")).toBeInTheDocument();
+    expect(requested()).not.toContain("/api/employees/me/profile");
   });
 });
 
 describe("настройки", () => {
-  it("доступны всем ролям", async () => {
+  it("/settings ведёт на единый профиль, доступно всем ролям", async () => {
     mockBackend(makeEmployee("admin"));
 
-    renderApp("/settings");
+    const { router } = renderApp("/settings");
 
     expect(await screen.findByText("О системе")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/profile");
   });
 });

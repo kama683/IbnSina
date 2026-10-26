@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Pencil, Plus, Trash2 } from "lucide-react";
 import RoleGate from "@/components/auth/RoleGate";
+import { ApiError } from "@/lib/api/api";
 import {
   createService,
+  deleteService,
   updateService,
   type Service,
   type ServiceCategory,
@@ -40,7 +42,7 @@ const EMPTY_FORM: FormState = {
 };
 
 /** Этап 2, коммит 7 (docs/PHASE2_ANALYSIS.md) — прейскурант. Чтение — всем
- * допущенным ролям, создание/правка/деактивация — только head_doctor
+ * допущенным ролям, создание/правка/деактивация — только head_doctor и admin
  * (RoleGate, зеркалит _MANAGE_SERVICES в back/app/routers/services.py). */
 export default function ServicesContent({ initialServices, currentEmployeeRole }: Props) {
   const [services, setServices] = useState(initialServices);
@@ -49,6 +51,22 @@ export default function ServicesContent({ initialServices, currentEmployeeRole }
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Удаление: услуга в модалке подтверждения + состояние запроса.
+  // deleteBlocked — бэкенд ответил 409 (услуга уже в счетах), модалка меняется
+  // на «невозможно удалить» с предложением отключить.
+  const [deleting, setDeleting] = useState<Service | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!deleting) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && !deleteBusy) setDeleting(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [deleting, deleteBusy]);
 
   function openCreate() {
     setForm(EMPTY_FORM);
@@ -108,6 +126,37 @@ export default function ServicesContent({ initialServices, currentEmployeeRole }
     }
   }
 
+  function openDelete(service: Service) {
+    setDeleteBlocked(false);
+    setDeleteError(null);
+    setDeleting(service);
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await deleteService(deleting.id);
+      setServices((prev) => prev.filter((s) => s.id !== deleting.id));
+      setDeleting(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setDeleteBlocked(true);
+      } else {
+        setDeleteError(err instanceof Error ? err.message : "Не удалось удалить услугу");
+      }
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  async function deactivateInstead() {
+    if (!deleting) return;
+    await toggleActive(deleting);
+    setDeleting(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -133,7 +182,7 @@ export default function ServicesContent({ initialServices, currentEmployeeRole }
                 <th className="px-5 py-2.5">Категория</th>
                 <th className="px-5 py-2.5">Цена</th>
                 <th className="px-5 py-2.5">Статус</th>
-                <th className="w-10 px-2 py-2.5" />
+                <th className="w-px whitespace-nowrap px-5 py-2.5 text-right" />
               </tr>
             </thead>
             <tbody>
@@ -159,23 +208,31 @@ export default function ServicesContent({ initialServices, currentEmployeeRole }
                       {service.isActive ? "Активна" : "Отключена"}
                     </span>
                   </td>
-                  <td className="px-2 py-3">
+                  <td className="whitespace-nowrap px-5 py-2">
                     <RoleGate role={currentEmployeeRole} allow={MANAGE_SERVICES_ROLES}>
-                      <div className="flex gap-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleActive(service)}
+                          className="mr-1 h-8 w-24 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                        >
+                          {service.isActive ? "Отключить" : "Включить"}
+                        </button>
                         <button
                           type="button"
                           onClick={() => openEdit(service)}
-                          className="text-gray-400 hover:text-gray-700"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
                           aria-label={`Редактировать ${service.name}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           type="button"
-                          onClick={() => toggleActive(service)}
-                          className="text-xs text-gray-500 hover:text-gray-800"
+                          onClick={() => openDelete(service)}
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          aria-label={`Удалить ${service.name}`}
                         >
-                          {service.isActive ? "Отключить" : "Включить"}
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </RoleGate>
@@ -193,6 +250,100 @@ export default function ServicesContent({ initialServices, currentEmployeeRole }
           </table>
         </div>
       </section>
+
+      {deleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-service-title"
+            className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-xl"
+          >
+            <div className="flex gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                  deleteBlocked ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"
+                }`}
+              >
+                {deleteBlocked ? (
+                  <AlertTriangle className="h-5 w-5" />
+                ) : (
+                  <Trash2 className="h-5 w-5" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h2 id="delete-service-title" className="text-base font-semibold text-gray-900">
+                  {deleteBlocked ? "Невозможно удалить услугу" : "Удалить услугу?"}
+                </h2>
+                <p className="mt-1 wrap-break-word text-sm text-gray-600">
+                  {deleteBlocked ? (
+                    <>
+                      Услуга «{deleting.name}» уже используется в выставленных счетах, поэтому
+                      удалить её нельзя — пострадала бы история счетов.{" "}
+                      {deleting.isActive
+                        ? "Вы можете только отключить её: она пропадёт из выбора при создании новых счетов, а старые счета останутся без изменений."
+                        : "Она уже отключена и не попадает в новые счета."}
+                    </>
+                  ) : (
+                    <>
+                      Услуга «{deleting.name}» ({deleting.code}) будет удалена из прейскуранта.
+                      Это действие необратимо.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              {deleteBlocked ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setDeleting(null)}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm"
+                  >
+                    Понятно
+                  </button>
+                  {deleting.isActive && (
+                    <button
+                      type="button"
+                      onClick={deactivateInstead}
+                      className="rounded-lg bg-[#1a5c3a] px-4 py-2 text-sm font-medium text-white hover:bg-[#14472e]"
+                    >
+                      Отключить услугу
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={deleteBusy}
+                    onClick={() => setDeleting(null)}
+                    className="rounded-lg border border-gray-200 px-4 py-2 text-sm disabled:opacity-50"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleteBusy}
+                    onClick={confirmDelete}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {deleteBusy ? "Удаление…" : "Удалить"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {(creating || editing) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">

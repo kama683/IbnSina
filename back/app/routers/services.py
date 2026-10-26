@@ -7,16 +7,20 @@ from app.models.employee import Employee, EmployeeRole
 from app.models.service import Service
 from app.schemas.service import ServiceCreateIn, ServiceUpdateIn
 from app.services.audit import record_audit
+from app.models.invoice_item import InvoiceItem
 
 router = APIRouter()
 
 # Этап 2, коммит 1 (docs/PHASE2_ANALYSIS.md §6, решение A) — accountant вне
 # доступа даже к прейскуранту: решение 5 плана трактуется как "ноль прав до
 # Этапа 4" целиком, не только счета/платежи/отчёты.
+#
+# Врачи и медсёстры прейскурант не видят: управляют им head_doctor и admin,
+# reception только читает — цены нужны ему для выставления счетов.
 _VIEW_SERVICES = require_roles(
-    EmployeeRole.reception, EmployeeRole.doctor, EmployeeRole.nurse, EmployeeRole.head_doctor
+    EmployeeRole.reception, EmployeeRole.head_doctor, EmployeeRole.admin
 )
-_MANAGE_SERVICES = require_roles(EmployeeRole.head_doctor)
+_MANAGE_SERVICES = require_roles(EmployeeRole.head_doctor, EmployeeRole.admin)
 
 
 def serialize_service(service: Service) -> dict:
@@ -132,3 +136,34 @@ def update_service(
 
     service = _get_service_or_404(db, service_id)
     return serialize_service(service)
+
+@router.delete("/{service_id}", dependencies=[Depends(_MANAGE_SERVICES)])
+def delete_service(
+    service_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    service = _get_service_or_404(db, service_id)
+
+    used = db.query(InvoiceItem.id).filter(InvoiceItem.service_id == service_id).first()
+    if used:
+        raise HTTPException(
+            status_code=409,
+            detail="Услуга уже есть в счетах — удалить нельзя, отключите её",
+        )
+
+    record_audit(
+        db,
+        actor_user_id=current_employee.user.id if current_employee.user else None,
+        entity_type="service",
+        entity_id=service.id,
+        action="delete",
+        changes={"code": service.code, "name": service.name},
+        request=request,
+    )
+    db.delete(service)
+    db.commit()
+
+    return {"id": service_id}
+
