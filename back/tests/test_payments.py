@@ -53,7 +53,6 @@ def _make_patient(db_session, *, iin: str) -> int:
         short_name="Пациент П.",
         birth_date=date(1990, 1, 1),
         gender="М",
-        area="Участок 1",
     )
     db_session.add(patient)
     db_session.commit()

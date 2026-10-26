@@ -38,7 +38,7 @@ export default function DoctorsNow({ doctors, state, onRetry }: Props) {
           {shown.map((doctor) => (
             <li key={doctor.employeeId}>
               <Link
-                to="/queue"
+                to="/appointments"
                 className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-gray-50"
               >
                 <span className="truncate text-gray-700">
@@ -59,7 +59,7 @@ export default function DoctorsNow({ doctors, state, onRetry }: Props) {
           ))}
           {hidden > 0 && (
             <li className="pt-1.5 text-xs text-gray-400">
-              <Link to="/queue" className="hover:text-gray-600">
+              <Link to="/appointments" className="hover:text-gray-600">
                 и ещё {hidden} в очереди →
               </Link>
             </li>

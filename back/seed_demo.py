@@ -43,6 +43,7 @@ from app.models import (
     Appointment,
     AppointmentStatus,
     CashShift,
+    CancellationReasonCode,
     CashShiftStatus,
     DiseaseTagVariant,
     DoctorEducation,
@@ -138,7 +139,6 @@ STREETS = [
     "пр. Абая", "ул. Достык", "ул. Иманова", "ул. Сыганак", "пр. Кабанбай батыра",
     "ул. Мангилик Ел", "ул. Керей и Жанибек хандар",
 ]
-AREAS = [f"Участок №{i}" for i in range(1, 9)]
 BLOOD = ["O(I)", "A(II)", "B(III)", "AB(IV)"]
 MINUS = "−"  # в seed.py резус-минус записан именно этим знаком
 
@@ -261,21 +261,21 @@ GENERAL_EXTRAS = ["LAB-OAK", "LAB-OAM", "PROC-ECG", "LAB-GLU", "LAB-CHOL", "PROC
 
 # ------------------------------------------------------------------- персонал
 
-# ключ, ФИО целиком (имя/отчество выводятся), специальность, должность, участок,
+# ключ, ФИО целиком (имя/отчество выводятся), специальность, должность,
 # кабинет, график, статус
 DOCTORS = [
-    ("ther", "Нурланов Берик Серикович", "Терапевт (04.01.001)", "Врач-терапевт", "Участок №1", "Кабинет 102", "allweek", "active"),
-    ("ther", "Омарова Динара Кайратовна", "Терапевт (04.01.001)", "Врач-терапевт", "Участок №2", "Кабинет 104", "morning", "active"),
-    ("ther", "Ким Елена Владимировна", "Терапевт (04.01.001)", "Врач-терапевт", "Участок №4", "Кабинет 106", "evening", "active"),
-    ("ther", "Токтаров Ержан Маратович", "Терапевт (04.01.001)", "Врач-терапевт", "Участок №5", "Кабинет 108", "full", "active"),
-    ("ther", "Сейтказина Айжан Нурлановна", "Терапевт (04.01.001)", "Врач-терапевт", "Участок №6", "Кабинет 110", "allweek", "active"),
-    ("ped", "Петрова Ольга Сергеевна", "Педиатр (04.03.001)", "Врач-педиатр", "Участок №7", "Кабинет 112", "morning", "active"),
-    ("card", "Абдрахманов Данияр Асханович", "Кардиолог (04.05.002)", "Врач-кардиолог", None, "Кабинет 201", "full", "active"),
-    ("neu", "Жанибекова Салтанат Мейрамовна", "Невролог (04.06.001)", "Врач-невролог", None, "Кабинет 203", "allweek", "active"),
-    ("lor", "Волков Андрей Игоревич", "Оториноларинголог (04.07.001)", "Врач-ЛОР", None, "Кабинет 205", "evening", "active"),
-    ("oph", "Мусина Лаура Тимуровна", "Офтальмолог (04.08.001)", "Врач-офтальмолог", None, "Кабинет 207", "morning", "active"),
-    ("sur", "Рахимов Тимур Алишерович", "Хирург (04.09.001)", "Врач-хирург", None, "Кабинет 209", "full", "on_leave"),
-    ("gyn", "Иванова Марина Павловна", "Акушер-гинеколог (04.10.001)", "Врач-гинеколог", None, "Кабинет 211", "full", "fired"),
+    ("ther", "Нурланов Берик Серикович", "Терапевт (04.01.001)", "Врач-терапевт", "Кабинет 102", "allweek", "active"),
+    ("ther", "Омарова Динара Кайратовна", "Терапевт (04.01.001)", "Врач-терапевт", "Кабинет 104", "morning", "active"),
+    ("ther", "Ким Елена Владимировна", "Терапевт (04.01.001)", "Врач-терапевт", "Кабинет 106", "evening", "active"),
+    ("ther", "Токтаров Ержан Маратович", "Терапевт (04.01.001)", "Врач-терапевт", "Кабинет 108", "full", "active"),
+    ("ther", "Сейтказина Айжан Нурлановна", "Терапевт (04.01.001)", "Врач-терапевт", "Кабинет 110", "allweek", "active"),
+    ("ped", "Петрова Ольга Сергеевна", "Педиатр (04.03.001)", "Врач-педиатр", "Кабинет 112", "morning", "active"),
+    ("card", "Абдрахманов Данияр Асханович", "Кардиолог (04.05.002)", "Врач-кардиолог", "Кабинет 201", "full", "active"),
+    ("neu", "Жанибекова Салтанат Мейрамовна", "Невролог (04.06.001)", "Врач-невролог", "Кабинет 203", "allweek", "active"),
+    ("lor", "Волков Андрей Игоревич", "Оториноларинголог (04.07.001)", "Врач-ЛОР", "Кабинет 205", "evening", "active"),
+    ("oph", "Мусина Лаура Тимуровна", "Офтальмолог (04.08.001)", "Врач-офтальмолог", "Кабинет 207", "morning", "active"),
+    ("sur", "Рахимов Тимур Алишерович", "Хирург (04.09.001)", "Врач-хирург", "Кабинет 209", "full", "on_leave"),
+    ("gyn", "Иванова Марина Павловна", "Акушер-гинеколог (04.10.001)", "Врач-гинеколог", "Кабинет 211", "full", "fired"),
 ]
 SCHEDULE_KINDS = {
     "morning": {d: ("08:00", "14:00") for d in range(6)},
@@ -433,12 +433,11 @@ class Ctx:
         self.db = db
         self.marker: Employee | None = None
         self.head_doctor: Employee | None = None
-        self.doctors: list[dict] = []          # {emp, key, area, sched, until, from_}
+        self.doctors: list[dict] = []          # {emp, key, sched, until, from_}
         self.nurses: list[Employee] = []
         self.reception: list[Employee] = []
         self.services: dict[str, Service] = {}
         self.patients: list[Patient] = []
-        self.patients_by_area: dict[str, list[Patient]] = defaultdict(list)
         self.appts: list[Appointment] = []
 
 
@@ -477,12 +476,12 @@ def create_people(ctx: Ctx) -> None:
 
     ctx.head_doctor = db.query(Employee).filter(Employee.role == EmployeeRole.head_doctor).first()
 
-    for i, (key, full, specialty, position, area, office, sched_kind, status) in enumerate(DOCTORS, 1):
+    for i, (key, full, specialty, position, office, sched_kind, status) in enumerate(DOCTORS, 1):
         fired = TODAY - timedelta(days=25) if status == "fired" else None
         emp = make_employee(full, EmployeeRole.doctor, position, f"doctor{i}@{DEMO_DOMAIN}", status, fired)
         profile = DoctorProfile(
             employee_id=emp.id, specialty=specialty, qualification_category=RNG.choice(["Высшая", "Первая", "Вторая"]),
-            area=area, office=office, workplace=CLINIC,
+            office=office, workplace=CLINIC,
             license_number=f"{RNG.randint(10000, 99999)}-МД", license_valid_until=f"31.12.{RNG.randint(2027, 2030)}",
             certificate_number=f"№ СС-{RNG.randint(2020, 2025)}-{RNG.randint(100, 999):05d}",
             certificate_valid_until=f"15.09.{RNG.randint(2027, 2030)}",
@@ -499,7 +498,7 @@ def create_people(ctx: Ctx) -> None:
             start, end = sched.get(d, ("08:00", "14:00"))
             db.add(Schedule(employee_id=emp.id, day_id=DAY_IDS[d], label=DAY_LABELS[d], enabled=on, start=start, end=end))
         ctx.doctors.append({
-            "emp": emp, "key": key, "area": area, "sched": {d: v for d, v in sched.items()},
+            "emp": emp, "key": key, "sched": {d: v for d, v in sched.items()},
             "from": None, "until": None if status == "active" else
             (fired if fired else TODAY - timedelta(days=10)),
             "load": 1.0,
@@ -519,7 +518,7 @@ def create_people(ctx: Ctx) -> None:
                 start, end = sched.get(d, ("09:00", "18:00"))
                 db.add(Schedule(employee_id=emp.id, day_id=DAY_IDS[d], label=DAY_LABELS[d], enabled=d in sched, start=start, end=end))
         ctx.doctors.append({
-            "emp": emp, "key": key, "area": profile.area if profile else None, "sched": sched,
+            "emp": emp, "key": key, "sched": sched,
             "from": None, "until": None, "load": 0.45 if emp.role == EmployeeRole.head_doctor else 1.0,
         })
 
@@ -555,11 +554,10 @@ def create_patients(ctx: Ctx) -> None:
         group = weighted([("child", 12), ("adult", 68), ("senior", 20)])
         years = {"child": RNG.randint(0, 17), "adult": RNG.randint(18, 64), "senior": RNG.randint(65, 92)}[group]
         birth = TODAY - timedelta(days=years * 365 + RNG.randint(0, 364))
-        area = RNG.choice(AREAS)
         patient = Patient(
             iin=make_iin(birth, female, used), full_name=full, short_name=short, birth_date=birth,
             gender="Ж" if female else "М", phone=phone() if group != "child" or RNG.random() < 0.7 else None,
-            area=area, address=f"г. Астана, {RNG.choice(STREETS)} {RNG.randint(1, 120)}, кв. {RNG.randint(1, 240)}",
+            address=f"г. Астана, {RNG.choice(STREETS)} {RNG.randint(1, 120)}, кв. {RNG.randint(1, 240)}",
             blood_type=f"{RNG.choice(BLOOD)} Rh{RNG.choice(['+', '+', '+', MINUS])}",
             dispensary=group != "child" and RNG.random() < (0.12 if group == "adult" else 0.45),
             updated_at=now, updated_by_id=ctx.marker.id,
@@ -619,8 +617,6 @@ def create_patients(ctx: Ctx) -> None:
     db.flush()
 
     ctx.patients = list(db.query(Patient).all())  # + 9 прежних пациентов
-    for patient in ctx.patients:
-        ctx.patients_by_area[patient.area].append(patient)
 
 
 def grid(start: str, end: str) -> list[str]:
@@ -636,7 +632,12 @@ def create_appointments(ctx: Ctx) -> list[dict]:
     """Приёмы + назначения. Возвращает спецификации завершённых приёмов (для счетов)."""
     db = ctx.db
     icd = json.loads((Path(__file__).parent / "app" / "data" / "icd10_common.json").read_text(encoding="utf-8"))
-    busy_doctor = {(r[0], r[1], r[2]) for r in db.execute(text("select employee_id, date, time from appointments")).all()}
+    # следующий номер в очереди врача на день — с учётом уже существующих приёмов
+    queue_no: dict[tuple[int, date], int] = defaultdict(int)
+    for emp_id, day, last in db.execute(
+        text("select employee_id, date, max(queue_number) from appointments group by employee_id, date")
+    ).all():
+        queue_no[(emp_id, day)] = last
     busy_patient: set[tuple[int, date, str]] = set()
     staff_creators = [r.id for r in ctx.reception] + [d["emp"].id for d in ctx.doctors if d["emp"].status == EmployeeStatus.active]
     completed_specs: list[dict] = []
@@ -659,21 +660,18 @@ def create_appointments(ctx: Ctx) -> list[dict]:
                 fill = max(0.10, 0.45 - 0.025 * delta)
             fill *= d["load"]
             for slot in grid(*sched):
-                if RNG.random() > fill or (emp.id, day, slot) in busy_doctor:
+                if RNG.random() > fill:
                     continue
                 start_dt = at(day, slot)
                 end_dt = start_dt + timedelta(minutes=30)
-                # пациент: терапевту/педиатру — чаще с участка, остальным любой
-                pool = ctx.patients_by_area.get(d["area"]) if d["area"] and RNG.random() < 0.8 else None
                 patient = None
                 for _ in range(8):
-                    cand = RNG.choice(pool or ctx.patients)
+                    cand = RNG.choice(ctx.patients)
                     if (cand.id, day, slot) not in busy_patient:
                         patient = cand
                         break
                 if patient is None:
                     continue
-                busy_doctor.add((emp.id, day, slot))
                 busy_patient.add((patient.id, day, slot))
 
                 # статус
@@ -689,13 +687,20 @@ def create_appointments(ctx: Ctx) -> list[dict]:
                 else:
                     status = weighted([(AppointmentStatus.scheduled, 94), (AppointmentStatus.cancelled, 6)])
 
+                queue_no[(emp.id, day)] += 1
                 appt = Appointment(
-                    date=day, time=slot, complaint=RNG.choice(COMPLAINTS[key]), status=status,
+                    date=day, queue_number=queue_no[(emp.id, day)], complaint=RNG.choice(COMPLAINTS[key]), status=status,
                     patient_id=patient.id, employee_id=emp.id, created_by_id=RNG.choice(staff_creators),
                 )
                 rx: list[tuple[str, str, str]] = []
+                # слот из сетки нужен только чтобы правдоподобно задать фактическое
+                # время приёма: пациенту время не назначается, у него номер в очереди
+                if status in (AppointmentStatus.in_progress, AppointmentStatus.completed):
+                    appt.started_at = start_dt
                 if status == AppointmentStatus.completed:
                     appt.duration_minutes = RNG.randint(10, 35)
+                    # момент завершения: как при реальном завершении — конец приёма
+                    appt.completed_at = start_dt + timedelta(minutes=appt.duration_minutes)
                     if RNG.random() < 0.92:
                         dx = RNG.choice(icd)
                         appt.diagnosis_code, appt.diagnosis_name = dx["code"], dx["name"]
@@ -710,7 +715,18 @@ def create_appointments(ctx: Ctx) -> list[dict]:
                     appt.cancelled_at = start_dt - timedelta(hours=RNG.randint(1, 72)) if delta >= 0 else start_dt - timedelta(hours=RNG.randint(1, 48))
                     appt.cancelled_at = min(appt.cancelled_at, CLOCK)
                     appt.cancelled_by_id = RNG.choice(staff_creators)
-                    appt.cancellation_reason = RNG.choice(CANCEL_REASONS)
+                    # справочник причин; текст — только у «Другое»
+                    code = weighted([
+                        (CancellationReasonCode.patient_cancelled, 40),
+                        (CancellationReasonCode.patient_no_contact, 20),
+                        (CancellationReasonCode.doctor_unavailable, 10),
+                        (CancellationReasonCode.rescheduled, 20),
+                        (CancellationReasonCode.other, 10),
+                    ])
+                    appt.cancellation_reason_code = code
+                    appt.cancellation_reason = (
+                        RNG.choice(CANCEL_REASONS) if code == CancellationReasonCode.other else None
+                    )
                 rows.append((appt, rx))
                 if status == AppointmentStatus.completed:
                     completed_specs.append({"appt": appt, "key": key, "end": end_dt - timedelta(minutes=RNG.randint(0, 12)),

@@ -4,33 +4,23 @@ type Props = {
   stats: WeekStatsData;
 };
 
-const rows: { key: keyof Omit<WeekStatsData, "period">; label: string }[] = [
-  { key: "total", label: "Всего приёмов" },
-  { key: "completed", label: "Завершённых" },
-  { key: "cancelled", label: "Отменённых" },
-  { key: "newPatients", label: "Новых пациентов" },
-  { key: "dispensary", label: "Диспансерных" },
-  { key: "avgMinutes", label: "Среднее время" },
-];
-
+/** Компактная статистика за неделю; без данных — «—». */
 export default function WeekStats({ stats }: Props) {
-  return (
-    <section className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-gray-900">
-        Статистика за неделю
-      </h2>
-      <p className="mt-0.5 text-xs text-gray-500">{stats.period}</p>
+  const rows = [
+    { label: "Новых пациентов", value: String(stats.newPatients) },
+    { label: "Диспансерных на учёте", value: String(stats.dispensary) },
+    { label: "Среднее время приёма", value: stats.avgMinutes > 0 ? `${stats.avgMinutes} мин` : "—" },
+  ];
 
-      <dl className="mt-3 space-y-2.5">
-        {rows.map(({ key, label }) => (
-          <div
-            key={key}
-            className="flex items-center justify-between text-sm"
-          >
-            <dt className="text-gray-500">{label}</dt>
-            <dd className="font-semibold tabular-nums text-gray-900">
-              {key === "avgMinutes" ? `${stats[key]} мин` : stats[key]}
-            </dd>
+  return (
+    <section className="rounded-[14px] border border-line bg-white px-[22px] py-[18px]">
+      <h2 className="text-base font-bold text-ink">Неделя</h2>
+      <p className="mt-0.5 text-[13px] text-ink-3">{stats.period}</p>
+      <dl className="mt-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-4 border-t border-row-line py-2.5 first:mt-1">
+            <dt className="text-sm text-ink-2">{row.label}</dt>
+            <dd className="text-sm font-semibold text-ink">{row.value}</dd>
           </div>
         ))}
       </dl>

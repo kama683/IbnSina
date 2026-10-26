@@ -9,7 +9,8 @@ export interface Appointment {
   patientId?: string;
   employeeId?: string;
   date: string;
-  time: string;
+  /** Номер пациента в очереди врача на этот день (время записи не назначается). */
+  queueNumber: number;
   patient: string;
   complaint: string;
   diagnosis: string | null;
@@ -19,6 +20,14 @@ export interface Appointment {
   cancelledAt: string | null;
   cancelledBy: string | null;
   cancellationReason: string | null;
+  /** Код причины отмены (справочник); текст — только для «other». */
+  cancellationReasonCode?: import("@/lib/cancellation").CancellationReasonCode | null;
+  /** Кабинет врача. */
+  office?: string;
+  /** Когда врач начал приём («Начать»; ISO, локальное время БД). */
+  startedAt?: string | null;
+  /** Когда приём завершён (ISO, локальное время БД). */
+  completedAt?: string | null;
 }
 
 export interface DoctorBadge {
@@ -32,12 +41,6 @@ export interface WorkDaySchedule {
   enabled: boolean;
   start: string;
   end: string;
-}
-
-export interface EducationEntry {
-  year: string;
-  title: string;
-  description: string;
 }
 
 export type PatientCareType = "ambulatory" | "inpatient";
@@ -75,7 +78,6 @@ export interface Patient {
   bloodType: string;
   phone: string;
   address: string;
-  area: string;
   lastAppointment: string | null;
   dispensary: boolean;
   careType: PatientCareType;
@@ -89,7 +91,9 @@ export interface PatientMedicalHistoryEntry {
   id: string;
   patientId: string;
   date: string;
-  time: string;
+  queueNumber: number;
+  startedAt?: string | null;
+  completedAt?: string | null;
   doctor: string;
   status: AppointmentStatus;
   complaint: string;
@@ -133,6 +137,7 @@ export interface PatientExamination {
   objectiveStatus: string;
   diagnoses: Diagnosis[];
   prescriptions: Prescription[];
+  completedAt?: string | null;
 }
 
 export interface PatientVisitHistory {

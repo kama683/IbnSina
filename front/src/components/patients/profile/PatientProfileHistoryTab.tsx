@@ -1,5 +1,6 @@
 import StatusBadge from "@/components/ui/StatusBadge";
 import type { PatientMedicalHistoryEntry } from "@/lib/types";
+import { visitTimeRange } from "@/lib/dates";
 
 type Props = {
   history: PatientMedicalHistoryEntry[];
@@ -36,7 +37,11 @@ export default function PatientProfileHistoryTab({ history }: Props) {
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-50 px-5 py-3">
               <p className="text-sm font-medium text-gray-900">
                 {entry.date}{" "}
-                <span className="font-normal text-gray-500">{entry.time}</span>
+                {visitTimeRange(entry.startedAt, entry.completedAt) && (
+                  <span className="font-normal text-gray-500">
+                    {visitTimeRange(entry.startedAt, entry.completedAt)}
+                  </span>
+                )}
                 <span className="text-gray-300"> — </span>
                 {entry.doctor}
               </p>

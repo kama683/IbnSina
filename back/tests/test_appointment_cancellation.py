@@ -8,6 +8,8 @@
 """
 from datetime import date, timedelta
 
+from sqlalchemy import func
+
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.doctor_profile import DoctorProfile
 from app.models.employee import Employee, EmployeeRole, EmployeeStatus, SalaryType
@@ -59,21 +61,25 @@ def _login(client, email: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {response.json()['accessToken']}"}
 
 
-def _make_appointment(db_session, *, employee_id: int, created_by_id: int, day: date, time: str) -> Appointment:
-    iin_suffix = time.replace(":", "")
+def _make_appointment(db_session, *, employee_id: int, created_by_id: int, day: date, tag: str) -> Appointment:
+    iin_suffix = tag.replace(":", "")
     patient = Patient(
         iin=f"90010{employee_id:03d}{iin_suffix}",
         full_name="Пациент Тестовый Тестович",
         short_name="Пациент Т.",
         birth_date=date(1990, 1, 1),
         gender="М",
-        area="Участок 1",
     )
     db_session.add(patient)
     db_session.flush()
+    last = (
+        db_session.query(func.max(Appointment.queue_number))
+        .filter(Appointment.employee_id == employee_id, Appointment.date == day)
+        .scalar()
+    )
     appointment = Appointment(
         date=day,
-        time=time,
+        queue_number=(last or 0) + 1,
         complaint="Жалоба",
         status=AppointmentStatus.scheduled,
         patient_id=patient.id,
@@ -94,14 +100,18 @@ def test_reception_cancels_any_appointment(client, db_session):
     )
     appointment = _make_appointment(
         db_session, employee_id=doctor.id, created_by_id=doctor.id,
-        day=_next_weekday("mon"), time="09:00",
+        day=_next_weekday("mon"), tag="09:00",
     )
 
     headers = _login(client, "cancel-reception@test.local")
     response = client.patch(
         f"/api/appointments/{appointment.id}",
         headers=headers,
-        json={"status": "cancelled", "cancellationReason": "Пациент передумал"},
+        json={
+            "status": "cancelled",
+            "cancellationReasonCode": "other",
+            "cancellationReason": "Пациент передумал",
+        },
     )
     assert response.status_code == 200, response.text
     body = response.json()
@@ -120,14 +130,14 @@ def test_doctor_cannot_cancel_colleague_appointment(client, db_session):
     )
     appointment = _make_appointment(
         db_session, employee_id=owner.id, created_by_id=owner.id,
-        day=_next_weekday("mon"), time="09:00",
+        day=_next_weekday("mon"), tag="09:00",
     )
 
     headers = _login(client, "cancel-other-doctor@test.local")
     response = client.patch(
         f"/api/appointments/{appointment.id}",
         headers=headers,
-        json={"status": "cancelled"},
+        json={"status": "cancelled", "cancellationReasonCode": "patient_cancelled"},
     )
     assert response.status_code == 403
 
@@ -138,14 +148,14 @@ def test_doctor_cancels_own_appointment(client, db_session):
     )
     appointment = _make_appointment(
         db_session, employee_id=owner.id, created_by_id=owner.id,
-        day=_next_weekday("mon"), time="09:00",
+        day=_next_weekday("mon"), tag="09:00",
     )
 
     headers = _login(client, "cancel-own-doctor@test.local")
     response = client.patch(
         f"/api/appointments/{appointment.id}",
         headers=headers,
-        json={"status": "cancelled"},
+        json={"status": "cancelled", "cancellationReasonCode": "patient_cancelled"},
     )
     assert response.status_code == 200, response.text
 
@@ -159,7 +169,7 @@ def test_reception_cannot_set_examination_fields(client, db_session):
     )
     appointment = _make_appointment(
         db_session, employee_id=doctor.id, created_by_id=doctor.id,
-        day=_next_weekday("mon"), time="09:00",
+        day=_next_weekday("mon"), tag="09:00",
     )
 
     headers = _login(client, "cancel-reception-2@test.local")
@@ -171,8 +181,8 @@ def test_reception_cannot_set_examination_fields(client, db_session):
     assert response.status_code == 403
 
 
-def test_reschedule_revalidates_working_hours_and_conflicts(client, db_session):
-    reception = _make_employee(
+def test_reschedule_revalidates_the_working_day(client, db_session):
+    _make_employee(
         db_session, email="reschedule-reception@test.local", role=EmployeeRole.reception, with_profile=False
     )
     doctor = _make_employee(
@@ -186,26 +196,19 @@ def test_reschedule_revalidates_working_hours_and_conflicts(client, db_session):
         )
     )
     db_session.commit()
-
     moving = _make_appointment(
-        db_session, employee_id=doctor.id, created_by_id=doctor.id, day=monday, time="09:00"
-    )
-    occupying = _make_appointment(
-        db_session, employee_id=doctor.id, created_by_id=doctor.id, day=monday, time="09:30"
+        db_session, employee_id=doctor.id, created_by_id=doctor.id, day=monday, tag="09:00"
     )
 
     headers = _login(client, "reschedule-reception@test.local")
 
-    outside_hours = client.patch(
-        f"/api/appointments/{moving.id}", headers=headers, json={"time": "11:00"}
+    day_off = client.patch(
+        f"/api/appointments/{moving.id}", headers=headers,
+        json={"date": _next_weekday("tue").isoformat()},
     )
-    assert outside_hours.status_code == 400
+    assert day_off.status_code == 400, "врач во вторник не принимает"
 
-    into_conflict = client.patch(
-        f"/api/appointments/{moving.id}", headers=headers, json={"time": "09:30"}
-    )
-    assert into_conflict.status_code == 409, into_conflict.text
-
-    ok = client.patch(f"/api/appointments/{moving.id}", headers=headers, json={"time": "10:00"})
+    next_monday = monday + timedelta(days=7)
+    ok = client.patch(f"/api/appointments/{moving.id}", headers=headers, json={"date": next_monday.isoformat()})
     assert ok.status_code == 200, ok.text
-    assert ok.json()["time"] == "10:00"
+    assert ok.json()["queueNumber"] == 1

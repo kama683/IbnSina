@@ -34,10 +34,6 @@ export default function PatientSidebar({ patient, history }: Props) {
               <dt className="text-gray-400">ИИН</dt>
               <dd className="text-gray-700">{formatIin(patient.iin)}</dd>
             </div>
-            <div>
-              <dt className="text-gray-400">Участок</dt>
-              <dd className="text-gray-700">{patient.area}</dd>
-            </div>
           </dl>
 
           {patient.dispensary && (

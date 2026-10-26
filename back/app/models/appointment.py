@@ -1,7 +1,7 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -14,12 +14,32 @@ class AppointmentStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class CancellationReasonCode(str, enum.Enum):
+    """Причина отмены приёма — справочник вместо свободного текста. Текст
+    (Appointment.cancellation_reason) хранится только для `other`."""
+
+    patient_cancelled = "patient_cancelled"      # пациент отменил
+    patient_no_contact = "patient_no_contact"    # не дозвонились
+    doctor_unavailable = "doctor_unavailable"    # врач не принимает
+    rescheduled = "rescheduled"                  # перенос
+    other = "other"                              # другое (с текстом)
+
+
 class Appointment(Base):
     __tablename__ = "appointments"
+    __table_args__ = (
+        UniqueConstraint("employee_id", "date", "queue_number", name="uq_appointment_queue_number"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[date] = mapped_column(Date, index=True)
-    time: Mapped[str] = mapped_column(String(5))
+    # Порядковый номер пациента у врача на день (1, 2, 3…): время записи не
+    # назначается — врач принимает столько, сколько нужно. Номер не
+    # переиспользуется: у отменённого приёма он остаётся за ним.
+    queue_number: Mapped[int] = mapped_column(Integer)
+    # Устарело: время слота. Новые приёмы его не получают; колонка осталась
+    # у старых записей и ни на что не влияет.
+    time: Mapped[str | None] = mapped_column(String(5), nullable=True)
     complaint: Mapped[str] = mapped_column(Text)
     status: Mapped[AppointmentStatus] = mapped_column(
         Enum(AppointmentStatus, name="appointment_status"),
@@ -44,6 +64,16 @@ class Appointment(Base):
         ForeignKey("employees.id"), nullable=True
     )
     cancellation_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # nullable: у приёмов, отменённых до появления справочника, кода не было
+    # (миграция проставила other); при новой отмене API требует код.
+    cancellation_reason_code: Mapped[CancellationReasonCode | None] = mapped_column(
+        Enum(CancellationReasonCode, name="cancellation_reason_code"), nullable=True
+    )
+    # Момент завершения приёма — для блока «Вышли от врача» на стойке.
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Момент, когда врач нажал «Начать»: вместе с completed_at даёт фактическое
+    # время приёма, которое видно в карточке пациента.
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     patient = relationship("Patient", back_populates="appointments")
     # foreign_keys обязателен на всех трёх — с этого коммита у Appointment

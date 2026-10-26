@@ -62,6 +62,8 @@ export interface InvoiceListRow extends Invoice {
 
 export type InvoiceListQuery = {
   patientId?: number;
+  /** Счета по этим приёмам (блок «Вышли от врача»). */
+  appointmentIds?: number[];
   status?: InvoiceStatus[];
   /** Даты создания включительно, YYYY-MM-DD. */
   from?: string;
@@ -76,6 +78,7 @@ export type InvoiceListQuery = {
 export function getInvoices(query: InvoiceListQuery = {}): Promise<InvoiceListRow[]> {
   const params = new URLSearchParams();
   if (query.patientId) params.set("patientId", String(query.patientId));
+  if (query.appointmentIds?.length) params.set("appointmentId", query.appointmentIds.join(","));
   if (query.status?.length) params.set("status", query.status.join(","));
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);

@@ -9,15 +9,15 @@ export default function AppLayout() {
   const employee = useEmployee();
 
   return (
-    <div className="min-h-screen bg-[#f4f6f5] print:bg-white">
+    <div className="min-h-screen bg-page print:bg-white">
       {/* Sidebar фиксирован — не скроллится; на печати (Этап 2, коммит 12) не нужен */}
       <Sidebar employee={employee} className="print:hidden" />
 
-      {/* Контент сдвинут на ширину sidebar (256px = w-64); при печати — во всю ширину */}
-      <div className="flex min-h-screen flex-col md:pl-64 print:pl-0">
+      {/* Контент сдвинут на ширину sidebar (248px); при печати — во всю ширину */}
+      <div className="flex min-h-screen flex-col md:pl-[248px] print:pl-0">
         {/* Header sticky — прилипает к верху при скролле; скрыт при печати */}
-        <Header employee={employee} className="print:hidden" />
-        <main className="flex-1 px-6 py-5 print:p-0">
+        <Header className="print:hidden" />
+        <main className="flex-1 px-4 py-6 sm:px-8 sm:py-7 print:p-0">
           <Outlet />
         </main>
       </div>

@@ -17,7 +17,6 @@ class PatientListOut(BaseModel):
     iin: str
     birth_date: date
     gender: str
-    area: str
     dispensary: bool
     diseases: list[PatientDiseaseOut]
 
@@ -31,7 +30,6 @@ class PatientCreateIn(BaseModel):
     gender: str
     phone: str | None = None
     address: str | None = None
-    area: str
     blood_type: str | None = Field(None, alias="bloodType")
     dispensary: bool = False
 
@@ -49,7 +47,6 @@ class PatientUpdateIn(BaseModel):
     gender: str | None = None
     phone: str | None = None
     address: str | None = None
-    area: str | None = None
     blood_type: str | None = Field(None, alias="bloodType")
 
     model_config = ConfigDict(populate_by_name=True)

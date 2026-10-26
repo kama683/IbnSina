@@ -1,88 +1,111 @@
-import { Link } from "react-router-dom";
-import { useRefresh } from "@/lib/use-refresh";
-import StatusBadge from "@/components/ui/StatusBadge";
-import AppointmentActions from "@/components/appointments/AppointmentActions";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import AppointmentRowActions from "@/components/appointments/AppointmentRowActions";
+import StatusChip from "@/components/ui/StatusChip";
+import { TABLE_CARD, TABLE_FOOT, TABLE_HEAD, TABLE_ROW } from "@/components/ui/tableStyles";
 import type { EmployeeRole } from "@/lib/api/employees";
 import type { Appointment } from "@/lib/types";
-import { ChevronRight } from "lucide-react";
+
+/** Сколько строк показываем, пока не нажали «Показать все». */
+const PREVIEW_ROWS = 6;
 
 type Props = {
   appointments: Appointment[];
+  /** Колонка «Врач» — когда видны приёмы нескольких врачей. */
+  showDoctor: boolean;
   currentEmployeeId: number;
   currentEmployeeRole: EmployeeRole;
+  startingId: string | null;
+  onStart: (appointment: Appointment) => void;
+  onChanged: () => void;
+  emptyText: string;
 };
 
 export default function AppointmentsTable({
   appointments,
+  showDoctor,
   currentEmployeeId,
   currentEmployeeRole,
+  startingId,
+  onStart,
+  onChanged,
+  emptyText,
 }: Props) {
-  const refresh = useRefresh();
+  const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? appointments : appointments.slice(0, PREVIEW_ROWS);
+  const columns = showDoctor
+    ? "grid-cols-[96px_minmax(0,1fr)_160px_140px_190px]"
+    : "grid-cols-[96px_minmax(0,1fr)_140px_190px]";
+
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
+    <section className={TABLE_CARD}>
       <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-gray-100 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-              <th className="px-5 py-2.5">Дата</th>
-              <th className="px-5 py-2.5">Время</th>
-              <th className="px-5 py-2.5">Пациент</th>
-              <th className="px-5 py-2.5">Жалоба</th>
-              <th className="px-5 py-2.5">Диагноз</th>
-              <th className="px-5 py-2.5">Врач</th>
-              <th className="px-5 py-2.5">Статус</th>
-              <th className="px-5 py-2.5">Действия</th>
-              <th className="w-10 px-2 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.map((appointment) => (
-              <tr
+        <div className={showDoctor ? "min-w-[860px]" : "min-w-[700px]"}>
+          <div className={`${TABLE_HEAD} ${columns}`}>
+            <span>Очередь</span>
+            <span>Пациент и жалоба</span>
+            {showDoctor && <span>Врач</span>}
+            <span>Статус</span>
+            <span className="text-right">Действие</span>
+          </div>
+
+          {appointments.length === 0 ? (
+            <p className="border-t border-row-line px-6 py-12 text-center text-sm text-ink-3">{emptyText}</p>
+          ) : (
+            visible.map((appointment) => (
+              <div
                 key={appointment.id}
-                className="group relative border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
+                onClick={() => navigate(`/patients/${appointment.patientId}`)}
+                className={`${TABLE_ROW} ${columns} cursor-pointer`}
               >
-                <td className="px-5 py-3 text-sm text-gray-500">
-                  {appointment.date}
-                </td>
-                <td className="px-5 py-3 text-sm font-medium text-gray-900">
-                  {appointment.time}
-                </td>
-                <td className="px-5 py-3 text-sm font-medium text-gray-900">
-                  {appointment.patient}
-                </td>
-                <td className="max-w-[180px] truncate px-5 py-3 text-sm text-gray-500">
-                  {appointment.complaint}
-                </td>
-                <td className="max-w-[180px] truncate px-5 py-3 text-sm text-gray-500">
-                  {appointment.diagnosis ?? "—"}
-                </td>
-                <td className="px-5 py-3 text-sm text-gray-500">
-                  {appointment.doctor}
-                </td>
-                <td className="px-5 py-3">
-                  <StatusBadge status={appointment.status} />
-                </td>
-                <td className="relative z-10 px-5 py-3">
-                  <AppointmentActions
+                <span className="text-base font-semibold text-ink">№{appointment.queueNumber}</span>
+                <Link
+                  to={`/patients/${appointment.patientId}`}
+                  className="min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >
+                  <span className="block truncate text-sm font-semibold text-ink">{appointment.patient}</span>
+                  <span className="block truncate text-[13px] text-ink-3" title={appointment.complaint}>
+                    {appointment.complaint}
+                  </span>
+                </Link>
+                {showDoctor && <span className="truncate text-sm text-ink-2">{appointment.doctor}</span>}
+                <span>
+                  <StatusChip kind={appointment.status} />
+                </span>
+                {/* клики внутри (кнопки, меню, окна отмены/переноса) не открывают карточку */}
+                <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+                  <AppointmentRowActions
                     appointment={appointment}
                     currentEmployeeId={currentEmployeeId}
                     currentEmployeeRole={currentEmployeeRole}
-                    onChanged={() => void refresh()}
+                    starting={startingId === appointment.id}
+                    onStart={onStart}
+                    onChanged={onChanged}
                   />
-                </td>
-                <td className="px-2 py-3 text-gray-300 group-hover:text-gray-400">
-                  <Link
-                    to={`/patients/${appointment.patientId}`}
-                    className="absolute inset-0"
-                    aria-label={`Открыть карточку пациента ${appointment.patient}`}
-                  />
-                  <ChevronRight className="h-4 w-4" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
+
+      {appointments.length > 0 && (
+        <div className={TABLE_FOOT}>
+          <span>
+            Показано {visible.length} из {appointments.length}
+          </span>
+          {appointments.length > PREVIEW_ROWS && (
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className="text-sm font-semibold text-brand hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            >
+              {expanded ? "Свернуть" : "Показать все"}
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

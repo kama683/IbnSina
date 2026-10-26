@@ -2,7 +2,7 @@ from app.models.doctor_education import DoctorEducation
 from app.models.patient import Patient
 from app.models.patient_diseases import DiseaseTagVariant, PatientDisease
 from app.models.patient_allergies import PatientAllergy
-from app.models.appointment import Appointment, AppointmentStatus
+from app.models.appointment import Appointment, AppointmentStatus, CancellationReasonCode
 from app.models.vaccination import Vaccination
 from app.models.hospitalization import Hospitalization
 from app.models.prescription import Prescription
@@ -29,6 +29,7 @@ __all__ = [
     "PatientAllergy",
     "Appointment",
     "AppointmentStatus",
+    "CancellationReasonCode",
     "Vaccination",
     "Hospitalization",
     "Prescription",

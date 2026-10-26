@@ -9,7 +9,6 @@ from app.deps import require_roles
 from app.models.appointment import Appointment
 from app.models.doctor_profile import DoctorProfile
 from app.models.employee import Employee, EmployeeRole, EmployeeStatus
-from app.models.patient import Patient
 from app.schemas.doctor import DoctorProfileUpdateIn
 from app.services.audit import record_audit
 
@@ -26,12 +25,12 @@ _VIEW_DOCTOR_LIST = require_roles(
 
 
 def _with_relations(db: Session, employee_id: int) -> Employee:
-    """Догружает doctor_profile/education/schedules — get_current_employee (app.deps)
+    """Догружает doctor_profile/schedules — get_current_employee (app.deps)
     отдаёт «голый» Employee без этих связей, тут они нужны для сериализации."""
     employee = (
         db.query(Employee)
         .options(
-            joinedload(Employee.doctor_profile).joinedload(DoctorProfile.education_entries),
+            joinedload(Employee.doctor_profile),
             joinedload(Employee.schedules),
         )
         .filter(Employee.id == employee_id)
@@ -42,36 +41,13 @@ def _with_relations(db: Session, employee_id: int) -> Employee:
     return employee
 
 
-def _build_badges(profile: DoctorProfile) -> list[dict]:
-    badges: list[dict] = []
-    if profile.qualification_category:
-        badges.append(
-            {
-                "label": "Высшая категория"
-                if profile.qualification_category == "Высшая"
-                else f"{profile.qualification_category} категория",
-                "variant": "green",
-            }
-        )
-    badges.append({"label": "КМО активен", "variant": "blue"})
-    return badges
+def _build_badges() -> list[dict]:
+    return [{"label": "КМО активен", "variant": "blue"}]
 
 
 def _build_metrics(db: Session, employee: Employee, profile: DoctorProfile) -> dict:
     today = date.today()
     month_start = today.replace(day=1)
-    area = profile.area
-
-    patients_in_area = (
-        db.query(Patient).filter(Patient.area == area).count() if area else 0
-    )
-    dispensary_count = (
-        db.query(Patient)
-        .filter(Patient.area == area, Patient.dispensary.is_(True))
-        .count()
-        if area
-        else 0
-    )
     appointments_in_month = (
         db.query(Appointment)
         .filter(
@@ -83,9 +59,7 @@ def _build_metrics(db: Session, employee: Employee, profile: DoctorProfile) -> d
     )
 
     return {
-        "patientsInArea": patients_in_area,
         "appointmentsInMay": appointments_in_month,
-        "dispensary": dispensary_count,
         "experienceYears": profile.experience_years or 0,
     }
 
@@ -100,13 +74,6 @@ def _serialize_schedule(employee: Employee) -> list[dict]:
             "end": row.end,
         }
         for row in sorted(employee.schedules, key=lambda item: item.id)
-    ]
-
-
-def _serialize_education(profile: DoctorProfile) -> list[dict]:
-    return [
-        {"year": row.year, "title": row.title, "description": row.description}
-        for row in sorted(profile.education_entries, key=lambda item: item.year)
     ]
 
 
@@ -146,18 +113,15 @@ def serialize_doctor_profile(db: Session, employee: Employee) -> dict:
         "shortName": employee.short_name,
         "initials": employee.initials,
         "positionTitle": employee.position_title or "",
-        "area": profile.area or "",
         "office": profile.office or "",
-        "badges": _build_badges(profile),
+        "badges": _build_badges(),
         "contacts": {
             "phone": employee.phone or "",
             "email": employee.email or "",
-            "workplace": profile.workplace or "",
         },
         "metrics": _build_metrics(db, employee, profile),
         "professional": {
             "specialty": profile.specialty or "",
-            "qualificationCategory": profile.qualification_category or "",
             "licenseNumber": profile.license_number or "",
             "licenseValidUntil": profile.license_valid_until or "",
             "certificateNumber": profile.certificate_number or "",
@@ -165,7 +129,6 @@ def serialize_doctor_profile(db: Session, employee: Employee) -> dict:
             "about": profile.about or "",
         },
         "schedule": _serialize_schedule(employee),
-        "education": _serialize_education(profile),
     }
 
 
@@ -174,7 +137,6 @@ def serialize_employee_list_item(employee: Employee) -> dict:
     return {
         "id": employee.id,
         "shortName": employee.short_name,
-        "area": (profile.area if profile else None) or "",
         "specialty": (profile.specialty if profile else None) or "",
     }
 

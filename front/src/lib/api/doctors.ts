@@ -1,32 +1,23 @@
 import { apiGet, apiPatch } from "./api";
 import type { Employee } from "@/lib/api/employees";
-import type {
-  DoctorBadge,
-  EducationEntry,
-  WorkDaySchedule,
-} from "@/lib/types";
+import type { DoctorBadge, WorkDaySchedule } from "@/lib/types";
 
 /** Профиль врача — есть только у сотрудников с ролью doctor/head_doctor
  * (см. HAS_DOCTOR_PROFILE_ROLES в lib/roles.ts). GET на этот эндпоинт для
  * сотрудника без doctor_profile вернёт 404. */
 export interface DoctorProfile extends Employee {
-  area: string;
   office: string;
   badges: DoctorBadge[];
   contacts: {
     phone: string;
     email: string;
-    workplace: string;
   };
   metrics: {
-    patientsInArea: number;
     appointmentsInMay: number;
-    dispensary: number;
     experienceYears: number;
   };
   professional: {
     specialty: string;
-    qualificationCategory: string;
     licenseNumber: string;
     licenseValidUntil: string;
     certificateNumber: string;
@@ -34,7 +25,6 @@ export interface DoctorProfile extends Employee {
     about: string;
   };
   schedule: WorkDaySchedule[];
-  education: EducationEntry[];
 }
 
 export type DoctorProfileUpdate = {

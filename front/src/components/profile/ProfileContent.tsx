@@ -1,7 +1,6 @@
 import { useRefresh } from "@/lib/use-refresh";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import ProfileContactsCard from "@/components/profile/ProfileContactsCard";
-import ProfileEducationCard from "@/components/profile/ProfileEducationCard";
 import ProfileMetricsCard from "@/components/profile/ProfileMetricsCard";
 import ProfileProfessionalCard from "@/components/profile/ProfileProfessionalCard";
 import ProfileScheduleCard from "@/components/profile/ProfileScheduleCard";
@@ -11,9 +10,11 @@ import type { WorkDaySchedule } from "@/lib/types";
 
 type Props = {
   profile: DoctorProfile;
+  /** Блоки под профилем, до кнопок сохранения (настройки). */
+  children?: ReactNode;
 };
 
-export default function ProfileContent({ profile }: Props) {
+export default function ProfileContent({ profile, children }: Props) {
   const refresh = useRefresh();
   const [about, setAbout] = useState(profile.professional.about);
   const [phone, setPhone] = useState(profile.contacts.phone);
@@ -55,7 +56,6 @@ export default function ProfileContent({ profile }: Props) {
           <ProfileContactsCard
             phone={phone}
             email={email}
-            workplace={profile.contacts.workplace}
             onPhoneChange={setPhone}
             onEmailChange={setEmail}
           />
@@ -72,7 +72,7 @@ export default function ProfileContent({ profile }: Props) {
         </div>
       </div>
 
-      <ProfileEducationCard education={profile.education} />
+      {children}
 
       {error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

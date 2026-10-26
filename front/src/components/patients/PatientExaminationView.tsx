@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
+import ExaminationCompleted from "@/components/patients/ExaminationCompleted";
 import ExaminationForm from "@/components/patients/ExaminationForm";
 import PatientSidebar from "@/components/patients/PatientSidebar";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -40,7 +41,11 @@ export default function PatientExaminationView({
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px]">
-        <ExaminationForm examination={examination} />
+        {examination.status === "completed" ? (
+          <ExaminationCompleted patientId={patient.id} examination={examination} />
+        ) : (
+          <ExaminationForm examination={examination} />
+        )}
         <PatientSidebar patient={patient} history={history} />
       </div>
     </div>

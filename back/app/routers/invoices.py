@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_employee, require_roles
+from app.models.appointment import Appointment
 from app.models.cash_shift import CashShift, CashShiftStatus
 from app.models.employee import Employee, EmployeeRole
 from app.models.invoice import Invoice, InvoiceStatus
@@ -214,6 +215,7 @@ def _parse_status_filter(values: list[str] | None) -> list[InvoiceStatus] | None
 def list_invoices(
     patient_id: int | None = Query(None, alias="patientId"),
     status_filter: list[str] | None = Query(None, alias="status"),
+    appointment_ids: list[str] | None = Query(None, alias="appointmentId"),
     created_from: date | None = Query(None, alias="from"),
     created_to: date | None = Query(None, alias="to"),
     limit: int | None = Query(None, ge=1, le=200),
@@ -230,6 +232,12 @@ def list_invoices(
     statuses = _parse_status_filter(status_filter)
     if statuses:
         query = query.filter(Invoice.status.in_(statuses))
+    if appointment_ids:
+        try:
+            wanted = [int(part) for raw in appointment_ids for part in raw.split(",") if part.strip()]
+        except ValueError:
+            raise HTTPException(status_code=422, detail="appointmentId — список чисел")
+        query = query.filter(Invoice.appointment_id.in_(wanted))
     if created_from is not None:
         query = query.filter(Invoice.created_at >= datetime.combine(created_from, datetime.min.time()))
     if created_to is not None:
@@ -267,6 +275,15 @@ def create_invoice(
     patient = db.query(Patient).filter(Patient.id == payload.patient_id).first()
     if patient is None:
         raise HTTPException(status_code=404, detail="Пациент не найден")
+
+    if payload.appointment_id is not None:
+        # Счёт «по приёму»: приём должен существовать и быть этого пациента —
+        # раньше id принимался как есть (чужой приём или FK-ошибка 500).
+        appointment = db.query(Appointment).filter(Appointment.id == payload.appointment_id).first()
+        if appointment is None:
+            raise HTTPException(status_code=404, detail="Приём не найден")
+        if appointment.patient_id != payload.patient_id:
+            raise HTTPException(status_code=400, detail="Приём относится к другому пациенту")
 
     invoice = Invoice(
         invoice_number=_generate_invoice_number(db),

@@ -3,14 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Search, UserPlus } from "lucide-react";
 import AppointmentBookingModal from "@/components/appointments/AppointmentBookingModal";
+import CancelAppointmentModal from "@/components/appointments/CancelAppointmentModal";
+import RescheduleAppointmentModal from "@/components/appointments/RescheduleAppointmentModal";
 import PatientCreateModal from "@/components/patients/PatientCreateModal";
 import {
   formatVisitDate,
   initialsOf,
   isFullIin,
   patientSummaryLine,
+  shortOffice,
 } from "@/components/dashboard/reception/format";
+import { getAppointments } from "@/lib/api/appointments";
 import { getPatientHistory, getPatients } from "@/lib/api/patients";
+import { shortRuDate, todayIso } from "@/lib/dates";
 import { useRefresh } from "@/lib/use-refresh";
 import type { Appointment, Patient } from "@/lib/types";
 
@@ -38,6 +43,22 @@ function useLastVisit(patient: Patient | null): string {
   return visit ? `был ${formatVisitDate(visit.date)} · ${visit.doctor}` : "визитов не было";
 }
 
+/** Ближайший неотменённый приём пациента (сегодня или позже): по нему
+ * регистратор переносит или отменяет запись, не уходя со стойки. */
+function useUpcomingAppointment(patient: Patient | null): Appointment | null {
+  const upcoming = useQuery({
+    queryKey: ["appointments", "upcoming", patient?.id],
+    queryFn: () =>
+      getAppointments({
+        patientId: patient!.id,
+        status: ["scheduled", "in_progress"],
+        from: todayIso(),
+      }),
+    enabled: patient !== null,
+  });
+  return upcoming.data?.[0] ?? null;
+}
+
 /** «Кто у стойки» — главный блок рабочего места регистратуры: один поле
  * ввода (ИИН или фамилия), результат — мини-карточка пациента. */
 export default function FrontDesk() {
@@ -50,9 +71,15 @@ export default function FrontDesk() {
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const refresh = useRefresh();
+  // Перенос и отмена ближайшего приёма — те же окна, что в очереди и списке.
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
+  // Была ли запись в открытом окне: по «Готово» сценарий завершён и поле очищается.
+  const justBooked = useRef(false);
 
   const selected = mode.kind === "found" ? mode.patient : null;
   const lastVisit = useLastVisit(selected);
+  const upcoming = useUpcomingAppointment(selected);
 
   /** Конец сценария: поле очищается, фокус возвращается в него. */
   function reset() {
@@ -62,12 +89,25 @@ export default function FrontDesk() {
   }
 
   function handleBooked(appointment: Appointment) {
-    setBookingPatient(null);
+    // Окно остаётся открытым (можно записать ещё одного) — закрывается по «Готово».
+    justBooked.current = true;
     setConfirmation(
-      `Записан на ${appointment.time}, ${formatVisitDate(appointment.date)} · ${appointment.doctor}`,
+      `Записан: №${appointment.queueNumber}, ${formatVisitDate(appointment.date)} · ${appointment.doctor}`,
     );
     void refresh(); // очередь, счётчики и «врачи сейчас» на стойке
-    reset();
+  }
+
+  function closeBooking() {
+    setBookingPatient(null);
+    if (justBooked.current) {
+      justBooked.current = false;
+      reset(); // сценарий завершён: поле очищено, фокус в нём
+    }
+  }
+
+  function handleChanged(message: string) {
+    setConfirmation(message);
+    void refresh();
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -177,8 +217,15 @@ export default function FrontDesk() {
             <p className="truncate text-xs text-gray-500">
               {patientSummaryLine(mode.patient, lastVisit)}
             </p>
+            {upcoming && (
+              <p className="truncate text-xs font-medium text-[#1a5c3a]">
+                {upcoming.status === "in_progress" ? "Сейчас на приёме" : "Записан"}{" "}
+                {shortRuDate(upcoming.date)}, №{upcoming.queueNumber} · {upcoming.doctor}
+                {upcoming.office ? ` · ${shortOffice(upcoming.office)}` : ""}
+              </p>
+            )}
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
             <button
               type="button"
               onClick={() => setBookingPatient(mode.patient)}
@@ -186,6 +233,24 @@ export default function FrontDesk() {
             >
               Записать
             </button>
+            {upcoming?.status === "scheduled" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setRescheduleTarget(upcoming)}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Перенести
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCancelTarget(upcoming)}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-red-50 hover:text-red-700"
+                >
+                  Отменить
+                </button>
+              </>
+            )}
             <Link
               to={`/patients/${mode.patient.id}`}
               className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
@@ -226,8 +291,26 @@ export default function FrontDesk() {
       <AppointmentBookingModal
         open={bookingPatient !== null}
         patient={bookingPatient}
-        onClose={() => setBookingPatient(null)}
+        onClose={closeBooking}
         onBooked={handleBooked}
+      />
+
+      <RescheduleAppointmentModal
+        appointment={rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        onRescheduled={(appointment) =>
+          handleChanged(
+            `Приём перенесён на ${shortRuDate(appointment.date)}, №${appointment.queueNumber} · ${appointment.doctor}`,
+          )
+        }
+      />
+
+      <CancelAppointmentModal
+        appointment={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onCancelled={(appointment) =>
+          handleChanged(`Приём на ${shortRuDate(appointment.date)}, №${appointment.queueNumber} отменён`)
+        }
       />
 
       <PatientCreateModal
@@ -240,6 +323,7 @@ export default function FrontDesk() {
           // запись отменят, пациент остаётся на стойке с кнопкой «Записать».
           setCreateOpen(false);
           setMode({ kind: "found", patient });
+          justBooked.current = false;
           setBookingPatient(patient);
         }}
       />

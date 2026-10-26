@@ -14,7 +14,6 @@ class DoctorProfile(Base):
 
     specialty: Mapped[str | None] = mapped_column(String(200), nullable=True)
     qualification_category: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    area: Mapped[str | None] = mapped_column(String(50), nullable=True)
     office: Mapped[str | None] = mapped_column(String(50), nullable=True)
     workplace: Mapped[str | None] = mapped_column(String(300), nullable=True)
     license_number: Mapped[str | None] = mapped_column(String(50), nullable=True)

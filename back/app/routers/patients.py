@@ -71,7 +71,7 @@ def _last_appointment_label(db: Session, patient_id: int) -> str | None:
     row = (
         db.query(Appointment)
         .filter(Appointment.patient_id == patient_id)
-        .order_by(Appointment.date.desc(), Appointment.time.desc())
+        .order_by(Appointment.date.desc(), Appointment.queue_number.desc())
         .first()
     )
     if not row:
@@ -96,7 +96,6 @@ def _serialize_patient(db: Session, patient: Patient) -> dict:
         "bloodType": patient.blood_type or "",
         "phone": patient.phone or "",
         "address": patient.address or "",
-        "area": patient.area,
         "lastAppointment": _last_appointment_label(db, patient.id),
         "dispensary": patient.dispensary,
         "careType": "inpatient" if hospitalization else "ambulatory",
@@ -126,7 +125,9 @@ def _serialize_history_entry(appointment: Appointment) -> dict:
         "id": str(appointment.id),
         "patientId": str(appointment.patient_id),
         "date": appointment.date.strftime("%d.%m.%Y"),
-        "time": appointment.time,
+        "queueNumber": appointment.queue_number,
+        "startedAt": appointment.started_at.isoformat() if appointment.started_at else None,
+        "completedAt": appointment.completed_at.isoformat() if appointment.completed_at else None,
         "doctor": appointment.employee.short_name,
         "status": appointment.status.value,
         "complaint": appointment.complaint,
@@ -183,7 +184,7 @@ def _find_active_appointment(db: Session, patient_id: int) -> Appointment | None
             Appointment.patient_id == patient_id,
             Appointment.status == AppointmentStatus.in_progress,
         )
-        .order_by(Appointment.date.desc(), Appointment.time.desc())
+        .order_by(Appointment.date.desc(), Appointment.queue_number.desc())
         .first()
     )
     if in_progress:
@@ -198,7 +199,23 @@ def _find_active_appointment(db: Session, patient_id: int) -> Appointment | None
             Appointment.date == today,
             Appointment.status == AppointmentStatus.scheduled,
         )
-        .order_by(Appointment.time)
+        .order_by(Appointment.queue_number)
+        .first()
+    )
+
+
+def _find_completed_today(db: Session, patient_id: int) -> Appointment | None:
+    """Последний завершённый сегодня приём — чтобы после «Завершить приём»
+    страница осмотра показывала итог, а не 404."""
+    return (
+        db.query(Appointment)
+        .options(joinedload(Appointment.prescriptions))
+        .filter(
+            Appointment.patient_id == patient_id,
+            Appointment.date == date.today(),
+            Appointment.status == AppointmentStatus.completed,
+        )
+        .order_by(Appointment.completed_at.desc().nullslast(), Appointment.queue_number.desc())
         .first()
     )
 
@@ -235,6 +252,7 @@ def _serialize_examination(appointment: Appointment) -> dict:
         "objectiveStatus": appointment.objective_status or "",
         "diagnoses": diagnoses,
         "prescriptions": prescriptions,
+        "completedAt": appointment.completed_at.isoformat() if appointment.completed_at else None,
     }
 
 
@@ -254,10 +272,34 @@ def list_patients(
     page: int = Query(1, ge=1),
     limit: int = Query(8, ge=1, le=100),
     search: str = Query(""),
-    area: str = Query(""),
+    list_filter: str = Query(
+        "all",
+        alias="filter",
+        description="all | mine (были на приёме у меня) | dispensary | new (ещё не было завершённых приёмов)",
+    ),
     db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
 ):
     query = db.query(Patient).options(*_PATIENT_LOAD_OPTIONS)
+
+    if list_filter == "mine":
+        query = query.filter(
+            Patient.id.in_(
+                db.query(Appointment.patient_id).filter(Appointment.employee_id == current_employee.id)
+            )
+        )
+    elif list_filter == "dispensary":
+        query = query.filter(Patient.dispensary.is_(True))
+    elif list_filter == "new":
+        query = query.filter(
+            ~Patient.id.in_(
+                db.query(Appointment.patient_id).filter(
+                    Appointment.status == AppointmentStatus.completed
+                )
+            )
+        )
+    elif list_filter != "all":
+        raise HTTPException(status_code=422, detail=f"Неизвестный фильтр списка: {list_filter}")
 
     normalized_search = search.strip().lower()
     if normalized_search:
@@ -266,9 +308,6 @@ def list_patients(
             | Patient.iin.ilike(f"%{normalized_search.replace(' ', '')}%")
         )
 
-    if area and area != "all":
-        query = query.filter(Patient.area == area)
-
     total = query.count()
     patients = (
         query.order_by(Patient.full_name)
@@ -276,17 +315,12 @@ def list_patients(
         .limit(limit)
         .all()
     )
-    areas = [
-        row[0]
-        for row in db.query(Patient.area).distinct().order_by(Patient.area).all()
-    ]
 
     return {
         "items": [_serialize_patient(db, patient) for patient in patients],
         "total": total,
         "page": page,
         "limit": limit,
-        "areas": areas,
     }
 
 
@@ -304,7 +338,6 @@ def create_patient(payload: PatientCreateIn, db: Session = Depends(get_db)):
         gender=payload.gender,
         phone=payload.phone,
         address=payload.address,
-        area=payload.area,
         blood_type=payload.blood_type,
         dispensary=payload.dispensary,
     )
@@ -322,7 +355,7 @@ def get_patient_history(patient_id: int, db: Session = Depends(get_db)):
         db.query(Appointment)
         .options(joinedload(Appointment.employee))
         .filter(Appointment.patient_id == patient_id)
-        .order_by(Appointment.date.desc(), Appointment.time.desc())
+        .order_by(Appointment.date.desc(), Appointment.queue_number.desc())
         .all()
     )
     return [_serialize_history_entry(row) for row in rows]
@@ -355,7 +388,9 @@ def get_patient_vaccinations(patient_id: int, db: Session = Depends(get_db)):
 @router.get("/{patient_id}/examination", dependencies=[Depends(_VIEW_EXAMINATION)])
 def get_patient_examination(patient_id: int, db: Session = Depends(get_db)):
     _get_patient_or_404(db, patient_id)
-    appointment = _find_active_appointment(db, patient_id)
+    appointment = _find_active_appointment(db, patient_id) or _find_completed_today(
+        db, patient_id
+    )
     if not appointment:
         raise HTTPException(status_code=404, detail="Активный приём не найден")
     return _serialize_examination(appointment)
@@ -367,7 +402,7 @@ def get_patient_visit_history(patient_id: int, db: Session = Depends(get_db)):
     rows = (
         db.query(Appointment)
         .filter(Appointment.patient_id == patient_id)
-        .order_by(Appointment.date.desc(), Appointment.time.desc())
+        .order_by(Appointment.date.desc(), Appointment.queue_number.desc())
         .limit(5)
         .all()
     )
@@ -410,8 +445,6 @@ def update_patient(
         patient.phone = payload.phone
     if payload.address is not None:
         patient.address = payload.address
-    if payload.area is not None:
-        patient.area = payload.area
     if payload.blood_type is not None:
         patient.blood_type = payload.blood_type
 

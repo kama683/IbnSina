@@ -52,7 +52,7 @@ def global_search(
             | Patient.short_name.ilike(f"%{query}%")
             | Appointment.complaint.ilike(f"%{query}%")
         )
-        .order_by(Appointment.date.desc(), Appointment.time.desc())
+        .order_by(Appointment.date.desc(), Appointment.queue_number.desc())
         .limit(5)
         .all()
     )
@@ -73,7 +73,7 @@ def global_search(
                 "patientId": str(appointment.patient_id),
                 "patient": appointment.patient.short_name,
                 "date": appointment.date.strftime("%d.%m.%Y"),
-                "time": appointment.time,
+                "queueNumber": appointment.queue_number,
                 "complaint": appointment.complaint,
                 "status": appointment.status.value,
             }

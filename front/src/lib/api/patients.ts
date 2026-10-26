@@ -6,7 +6,6 @@ export type PatientsPage = {
   total: number;
   page: number;
   limit: number;
-  areas: string[];
 };
 
 export type PatientCreatePayload = {
@@ -16,16 +15,19 @@ export type PatientCreatePayload = {
   gender: "М" | "Ж";
   phone?: string;
   address?: string;
-  area: string;
   bloodType?: string;
   dispensary?: boolean;
 };
+
+/** Вкладки списка: все, мои (были на приёме у текущего врача), диспансерные,
+ * новые (ещё не было завершённых приёмов). */
+export type PatientsFilter = "all" | "mine" | "dispensary" | "new";
 
 type PatientsQuery = {
   page?: number;
   limit?: number;
   search?: string;
-  area?: string;
+  filter?: PatientsFilter;
 };
 
 /** Список пациентов с пагинацией (GET /api/patients). */
@@ -34,7 +36,7 @@ export function getPatients(query: PatientsQuery = {}): Promise<PatientsPage> {
   if (query.page) params.set("page", String(query.page));
   if (query.limit) params.set("limit", String(query.limit));
   if (query.search) params.set("search", query.search);
-  if (query.area && query.area !== "all") params.set("area", query.area);
+  if (query.filter && query.filter !== "all") params.set("filter", query.filter);
 
   const suffix = params.toString();
   return apiGet<PatientsPage>(`/api/patients${suffix ? `?${suffix}` : ""}`);
@@ -57,7 +59,6 @@ export type PatientUpdatePayload = Partial<{
   gender: "М" | "Ж";
   phone: string;
   address: string;
-  area: string;
   bloodType: string;
 }>;
 

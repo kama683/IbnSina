@@ -4,12 +4,13 @@ import ServicesContent from "@/components/services/ServicesContent";
 import QueryBoundary from "@/components/ui/QueryBoundary";
 import { getServices } from "@/lib/api/services";
 import { useEmployee } from "@/lib/auth/employee-context";
+import { MANAGE_SERVICES_ROLES } from "@/lib/roles";
 
 // Доступ по роли (VIEW_SERVICES_ROLES) проверяет <RequireRole> в router.tsx.
 export default function ServicesPage() {
   const employee = useEmployee();
-  // includeInactive для head_doctor — он же ими и управляет (включает/выключает).
-  const includeInactive = employee.role === "head_doctor";
+  // includeInactive для тех, кто управляет услугами (включает/выключает).
+  const includeInactive = MANAGE_SERVICES_ROLES.includes(employee.role);
 
   const services = useQuery({
     queryKey: ["services", { includeInactive }],

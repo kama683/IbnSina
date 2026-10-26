@@ -1,4 +1,5 @@
 import { apiGet, apiPatch, apiPost } from "./api";
+import type { CancellationReasonCode } from "@/lib/cancellation";
 import type { Appointment } from "@/lib/types";
 
 export interface WeekStats {
@@ -53,46 +54,76 @@ export function updateAppointmentStatus(
   return apiPatch<Appointment>(`/api/appointments/${id}`, { status });
 }
 
-/** Этап 1, коммит 9 (docs/PHASE1_ANALYSIS.md §6 п.3) — отмена приёма.
- * Права проверяет бэкенд (reception/head_doctor — любой, врач — только
- * свой, коммит 5); здесь только сам вызов. */
+/** Отмена приёма. Причина обязательна: код из справочника, для «Другое» —
+ * ещё и текст. Права проверяет бэкенд (reception/head_doctor — любой приём,
+ * врач — только свой), отменить можно только запланированный приём. */
 export function cancelAppointment(
   id: string,
-  cancellationReason: string,
+  reason: { code: CancellationReasonCode; text?: string },
 ): Promise<Appointment> {
   return apiPatch<Appointment>(`/api/appointments/${id}`, {
     status: "cancelled",
-    cancellationReason,
+    cancellationReasonCode: reason.code,
+    cancellationReason: reason.code === "other" ? reason.text?.trim() : undefined,
   });
 }
 
-/** Перенос приёма — правка даты/времени той же записи (не отмена+создание),
- * бэкенд пересчитывает график и конфликт-чек заново. */
+/** Перенос приёма — правка даты (и, при необходимости, врача) той же записи,
+ * не отмена+создание: бэкенд проверяет рабочий день и ставит пациента в конец
+ * очереди нового дня. */
 export function rescheduleAppointment(
   id: string,
-  date: string,
-  time: string,
+  target: { date: string; employeeId?: string },
 ): Promise<Appointment> {
-  return apiPatch<Appointment>(`/api/appointments/${id}`, { date, time });
+  return apiPatch<Appointment>(`/api/appointments/${id}`, {
+    date: target.date,
+    employeeId: target.employeeId ? Number(target.employeeId) : undefined,
+  });
 }
 
-/** Этап 1, коммит 8 (docs/PHASE1_ANALYSIS.md §6 п.6) — превью слотов для
- * формы записи. Не источник истины: бэкенд всё равно перепроверяет сам при
- * создании/переносе (решение C, §6.1), это только чтобы не предлагать
- * заведомо занятое/нерабочее время. */
-export function getAvailableSlots(
-  employeeId: string,
-  date: string,
-): Promise<string[]> {
+export type AppointmentsQuery = {
+  from?: string;
+  to?: string;
+  patientId?: string;
+  status?: Appointment["status"][];
+  /** Завершённые за последние N минут (по часам БД), новые первыми. */
+  completedWithin?: number;
+};
+
+/** Приёмы по пациенту, статусам, периоду или «завершены за N минут»
+ * (GET /api/appointments). Нужен хотя бы один из: from/to, patientId,
+ * completedWithin — журнал всей клиники бэкенд не отдаёт. */
+export function getAppointments(query: AppointmentsQuery): Promise<Appointment[]> {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.patientId) params.set("patientId", query.patientId);
+  if (query.status?.length) params.set("status", query.status.join(","));
+  if (query.completedWithin) params.set("completedWithin", String(query.completedWithin));
+  return apiGet<Appointment[]>(`/api/appointments?${params}`);
+}
+
+export type QueueInfo = {
+  /** Врач принимает в этот день по графику. */
+  works: boolean;
+  /** Сколько пациентов уже ждёт (записаны или на приёме). */
+  waiting: number;
+  /** Номер, который получит новый пациент. */
+  nextNumber: number;
+};
+
+/** Подсказка для формы записи: работает ли врач в этот день и какой номер в
+ * очереди получит пациент. Не источник истины — номер ставит бэкенд при
+ * создании. */
+export function getQueueInfo(employeeId: string, date: string): Promise<QueueInfo> {
   const params = new URLSearchParams({ employeeId, date });
-  return apiGet<string[]>(`/api/appointments/available-slots?${params}`);
+  return apiGet<QueueInfo>(`/api/appointments/queue-info?${params}`);
 }
 
 export type AppointmentCreatePayload = {
   patientId: string;
   employeeId: string;
   date: string;
-  time: string;
   complaint: string;
 };
 
@@ -106,7 +137,6 @@ export function createAppointment(
     patientId: Number(payload.patientId),
     employeeId: Number(payload.employeeId),
     date: payload.date,
-    time: payload.time,
     complaint: payload.complaint,
   });
 }

@@ -4,16 +4,13 @@ import {
   Activity,
   LayoutDashboard,
   Calendar,
-  MonitorCheck,
   Users,
-  Settings,
   LogOut,
   UserRound,
   Tag,
   Wallet,
   RotateCcw,
   BarChart3,
-  Clock,
   IdCard,
   Banknote,
 } from "lucide-react";
@@ -28,15 +25,12 @@ type SidebarProps = {
 
 const ICONS: Record<NavIcon, React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
   desk: Users,
-  clock: Clock,
   id: IdCard,
   banknote: Banknote,
   dashboard: LayoutDashboard,
   calendar: Calendar,
-  queue: MonitorCheck,
   patients: Users,
   profile: UserRound,
-  settings: Settings,
   services: Tag,
   cash: Wallet,
   refund: RotateCcw,
@@ -67,19 +61,17 @@ export default function Sidebar({ employee, className = "" }: SidebarProps) {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-gray-200/80 bg-white md:flex ${className}`}
+      className={`flex w-full flex-col gap-4 border-b border-line bg-white px-3.5 py-4 md:fixed md:inset-y-0 md:left-0 md:z-40 md:w-[248px] md:gap-6 md:border-b-0 md:border-r md:py-5 ${className}`}
     >
       {/* Логотип IbnSina + иконка пульса */}
-      <div className="flex h-14 items-center gap-2.5 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a5c3a]">
-          <Activity className="h-4 w-4 text-white" strokeWidth={2.5} />
+      <div className="flex items-center gap-3 px-1.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-brand">
+          <Activity className="h-5 w-5 text-white" strokeWidth={2} aria-hidden />
         </div>
-        <span className="text-lg font-bold tracking-tight text-gray-900">
-          IbnSina
-        </span>
+        <span className="text-lg font-bold tracking-tight text-ink">IbnSina</span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pt-2">
+      <nav aria-label="Основное меню" className="md:flex-1 md:overflow-y-auto">
         {sections.map((section) => (
           <NavGroup key={section.title} title={section.title}>
             {section.items.map((item) => (
@@ -95,18 +87,25 @@ export default function Sidebar({ employee, className = "" }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Профиль сотрудника внизу — данные приходят из сессии (RequireAuth) */}
-      <div className="border-t border-gray-200/80 p-4">
-        <p className="text-sm font-medium text-gray-900">{employee.fullName}</p>
-        <p className="mt-0.5 text-xs text-gray-500">
-          {employee.positionTitle || ROLE_LABELS[employee.role]}
-        </p>
+      {/* Сотрудник внизу — данные приходят из сессии (RequireAuth) */}
+      <div className="border-t border-line pt-4">
+        <div className="flex items-center gap-3 px-1.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-bold text-brand">
+            {employee.initials}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-ink">{employee.shortName}</p>
+            <p className="truncate text-xs text-ink-3">
+              {employee.positionTitle || ROLE_LABELS[employee.role]}
+            </p>
+          </div>
+        </div>
         <button
           type="button"
           onClick={handleLogout}
-          className="mt-3 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-800"
+          className="mt-3 flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium text-ink-3 transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-5 w-5" strokeWidth={1.8} aria-hidden />
           Выйти
         </button>
       </div>
@@ -122,10 +121,12 @@ function NavGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-4">
-      {/* Заголовок секции: не ссылка, приглушённый, 11px */}
-      <p className="mb-1 px-3 text-[11px] font-medium text-gray-400">{title}</p>
-      <ul className="space-y-0.5">{children}</ul>
+    <div className="mb-4 last:mb-0">
+      {/* Одна секция «Меню» без заголовка; у регистратуры секции подписаны */}
+      {title !== "Меню" && (
+        <p className="mb-1 px-3 text-xs font-medium text-ink-3">{title}</p>
+      )}
+      <ul className="flex flex-wrap gap-1 md:block md:space-y-1">{children}</ul>
     </div>
   );
 }
@@ -148,13 +149,14 @@ function NavItem({
     <li>
       <Link
         to={href}
-        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+        aria-current={isActive ? "page" : undefined}
+        className={`flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
           isActive
-            ? "bg-[#e8f5ee] font-medium text-[#1a5c3a]"
-            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            ? "bg-brand-soft font-semibold text-brand"
+            : "font-medium text-ink-2 hover:bg-subtle hover:text-ink"
         }`}
       >
-        <Icon size={18} strokeWidth={isActive ? 2.25 : 2} />
+        <Icon size={20} strokeWidth={1.8} />
         {label}
       </Link>
     </li>

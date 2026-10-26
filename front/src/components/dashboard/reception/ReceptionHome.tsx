@@ -4,6 +4,7 @@ import AwaitingPayment from "@/components/dashboard/reception/AwaitingPayment";
 import DoctorsNow from "@/components/dashboard/reception/DoctorsNow";
 import FrontDesk from "@/components/dashboard/reception/FrontDesk";
 import MetricsRow from "@/components/dashboard/reception/MetricsRow";
+import RecentlyCompleted from "@/components/dashboard/reception/RecentlyCompleted";
 import { formatClock, formatLongDate } from "@/components/dashboard/reception/format";
 import { getReceptionSummary } from "@/lib/api/reports";
 
@@ -50,6 +51,8 @@ export default function ReceptionHome() {
       </div>
 
       <FrontDesk />
+
+      <RecentlyCompleted />
 
       <MetricsRow summary={data} />
 

@@ -32,7 +32,7 @@ export default function ProfileSummaryCard({ profile }: Props) {
         </h2>
         <p className="mt-1 text-sm text-gray-500">{profile.positionTitle}</p>
         <p className="mt-0.5 text-sm text-gray-500">
-          {profile.area} · {profile.office}
+          {profile.office}
         </p>
 
         <div className="mt-4 flex flex-wrap justify-center gap-2">

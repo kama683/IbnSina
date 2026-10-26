@@ -22,7 +22,6 @@ export default function PatientEditModal({ patient, open, onClose, onUpdated }: 
     gender: patient.gender,
     phone: patient.phone,
     address: patient.address,
-    area: patient.area,
     bloodType: patient.bloodType,
   });
 
@@ -35,7 +34,6 @@ export default function PatientEditModal({ patient, open, onClose, onUpdated }: 
         gender: patient.gender,
         phone: patient.phone,
         address: patient.address,
-        area: patient.area,
         bloodType: patient.bloodType,
       });
       setError(null);
@@ -105,14 +103,6 @@ export default function PatientEditModal({ patient, open, onClose, onUpdated }: 
               <option value="М">М</option>
               <option value="Ж">Ж</option>
             </select>
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-gray-600">Участок</span>
-            <input
-              value={form.area}
-              onChange={(e) => setForm((prev) => ({ ...prev, area: e.target.value }))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2"
-            />
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-gray-600">Телефон</span>

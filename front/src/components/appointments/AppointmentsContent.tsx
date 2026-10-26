@@ -1,77 +1,59 @@
 import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import AppointmentsToolbar from "@/components/appointments/AppointmentsToolbar";
-import AppointmentsTable from "@/components/appointments/AppointmentsTable";
+import AppointmentBookingModal from "@/components/appointments/AppointmentBookingModal";
 import AppointmentsCalendar from "@/components/appointments/AppointmentsCalendar";
+import AppointmentsFilters from "@/components/appointments/AppointmentsFilters";
+import AppointmentsTable from "@/components/appointments/AppointmentsTable";
+import PageHeader from "@/components/layout/PageHeader";
+import { buttonClass } from "@/components/ui/buttonStyles";
 import ErrorState from "@/components/ui/ErrorState";
-import PageLoader from "@/components/ui/PageLoader";
-import QueryBoundary from "@/components/ui/QueryBoundary";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import TableSkeleton from "@/components/ui/TableSkeleton";
+import { TABLE_CARD } from "@/components/ui/tableStyles";
 import { getAppointmentsInRange } from "@/lib/api/appointments";
-import { getDoctorProfile } from "@/lib/api/doctors";
 import type { EmployeeRole } from "@/lib/api/employees";
-import { getPatients } from "@/lib/api/patients";
-import {
-  buildCalendarWeek,
-  getCurrentWeekIsoRange,
-  getDateForWeekOffset,
-} from "@/lib/calendar-utils";
-import { BOOK_APPOINTMENT_ROLES, HAS_DOCTOR_PROFILE_ROLES } from "@/lib/roles";
+import { buildCalendarWeek, getCurrentWeekIsoRange, getDateForWeekOffset } from "@/lib/calendar-utils";
+import { formatDayMonth, todayIso } from "@/lib/dates";
+import { filterByTab, tabCounts, type AppointmentTab } from "@/lib/queue";
+import { BOOK_APPOINTMENT_ROLES } from "@/lib/roles";
 import { useRefresh } from "@/lib/use-refresh";
-
-function toIsoDate(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 type Props = {
   currentEmployeeId: number;
   currentEmployeeRole: EmployeeRole;
-  doctorShortName: string;
 };
 
-export default function AppointmentsContent({
-  currentEmployeeId,
-  currentEmployeeRole,
-  doctorShortName,
-}: Props) {
+const EMPTY_TEXT: Record<AppointmentTab, string> = {
+  all: "Нет приёмов на этот день",
+  next: "Нет предстоящих приёмов на этот день",
+  done: "Нет проведённых приёмов",
+  cancelled: "Нет отменённых приёмов",
+};
+
+/** «Приёмы» регистратуры: приёмы всех врачей за день (колонка «Врач») и
+ * календарь недели. У врача, главврача и медсестры приёмы живут на дашборде
+ * (dashboard/doctor/DoctorDashboard); вместо времени везде номер в очереди. */
+export default function AppointmentsContent({ currentEmployeeId, currentEmployeeRole }: Props) {
   const refresh = useRefresh();
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<"list" | "calendar">("list");
-  const [listDate, setListDate] = useState(toIsoDate(new Date()));
+  const [listDate, setListDate] = useState(todayIso());
+  const [tab, setTab] = useState<AppointmentTab>("next");
+  const [bookingOpen, setBookingOpen] = useState(false);
 
-  // Неделя календаря — в URL (?week=N), как и раньше: ссылкой можно поделиться.
+  // Неделя календаря — в URL (?week=N): ссылкой можно поделиться.
   const weekOffset = Number.parseInt(searchParams.get("week") ?? "0", 10) || 0;
   const { from, to, calendarWeek } = useMemo(() => {
     const weekDate = getDateForWeekOffset(weekOffset);
-    return {
-      ...getCurrentWeekIsoRange(weekDate),
-      calendarWeek: buildCalendarWeek(weekDate),
-    };
+    return { ...getCurrentWeekIsoRange(weekDate), calendarWeek: buildCalendarWeek(weekDate) };
   }, [weekOffset]);
 
-  // Кабинет имеет смысл только для doctor/head_doctor (у остальных ролей нет
-  // doctor_profile) — для reception/nurse остаётся пустая строка.
-  const hasDoctorProfile = HAS_DOCTOR_PROFILE_ROLES.includes(currentEmployeeRole);
-  const office = useQuery({
-    queryKey: ["doctor-profile"],
-    queryFn: getDoctorProfile,
-    enabled: hasDoctorProfile,
-    select: (profile) => profile.office,
-  });
-  // Список пациентов нужен только форме записи — тем, кто не может записывать
-  // (медсестра), его не запрашиваем.
   const canBook = BOOK_APPOINTMENT_ROLES.includes(currentEmployeeRole);
-  const patients = useQuery({
-    queryKey: ["patients", "list", { page: 1, limit: 100 }],
-    queryFn: () => getPatients({ page: 1, limit: 100 }),
-    enabled: canBook,
-  });
 
   // Список и календарь грузятся отдельно от страницы: смена даты/недели не
-  // должна сносить тулбар — прошлые данные остаются на экране до прихода новых.
+  // сносит панель фильтров — прошлые данные остаются до прихода новых.
   const list = useQuery({
     queryKey: ["appointments", "range", listDate, listDate],
     queryFn: () => getAppointmentsInRange(listDate, listDate),
@@ -84,38 +66,76 @@ export default function AppointmentsContent({
     enabled: view === "calendar",
   });
 
+  const all = list.data ?? [];
+  const counts = tabCounts(all);
+  const rows = filterByTab(all, tab);
+
   function navigateWeek(delta: number) {
     const nextOffset = weekOffset + delta;
     setSearchParams(nextOffset === 0 ? {} : { week: String(nextOffset) });
   }
 
   return (
-    <QueryBoundary queries={[office, patients]}>
-      <AppointmentsToolbar
-        view={view}
-        onViewChange={setView}
-        listDate={listDate}
-        onListDateChange={setListDate}
-        patients={patients.data?.items ?? []}
-        onAppointmentCreated={() => void refresh()}
-        canBook={canBook}
+    <div className="mx-auto max-w-[1240px] space-y-6">
+      <PageHeader
+        title="Приёмы"
+        subtitle={`Приёмы на ${formatDayMonth(listDate)}`}
+        actions={
+          <>
+            <SegmentedControl
+              ariaLabel="Режим просмотра"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "list", label: "Сегодня" },
+                { value: "calendar", label: "Календарь" },
+              ]}
+            />
+            {canBook && (
+              <button type="button" onClick={() => setBookingOpen(true)} className={buttonClass("primary", "md")}>
+                <Plus className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
+                Записать пациента
+              </button>
+            )}
+          </>
+        }
       />
+
       {view === "list" ? (
-        list.isError ? (
-          <ErrorState
-            title="Не удалось загрузить приёмы"
-            message={list.error.message}
-            onRetry={() => void list.refetch()}
+        <>
+          <AppointmentsFilters
+            date={listDate}
+            onDateChange={setListDate}
+            tab={tab}
+            onTabChange={setTab}
+            counts={counts}
           />
-        ) : list.data ? (
-          <AppointmentsTable
-            appointments={list.data}
-            currentEmployeeId={currentEmployeeId}
-            currentEmployeeRole={currentEmployeeRole}
-          />
-        ) : (
-          <PageLoader />
-        )
+
+          {list.isError ? (
+            <ErrorState
+              title="Не удалось загрузить приёмы"
+              message={list.error.message}
+              onRetry={() => void list.refetch()}
+            />
+          ) : list.data ? (
+            <AppointmentsTable
+              // при смене даты/вкладки список снова сворачивается до первых строк
+              key={`${listDate}-${tab}`}
+              appointments={rows}
+              showDoctor
+              currentEmployeeId={currentEmployeeId}
+              currentEmployeeRole={currentEmployeeRole}
+              startingId={null}
+              onStart={() => undefined}
+              onChanged={() => void refresh()}
+              emptyText={EMPTY_TEXT[tab]}
+            />
+          ) : (
+            <section className={TABLE_CARD}>
+              <TableSkeleton />
+            </section>
+          )}
+        </>
       ) : calendar.isError ? (
         <ErrorState
           title="Не удалось загрузить календарь"
@@ -126,14 +146,26 @@ export default function AppointmentsContent({
         <AppointmentsCalendar
           appointments={calendar.data}
           week={calendarWeek}
-          doctorShortName={doctorShortName}
-          doctorOffice={office.data ?? ""}
+          doctorShortName=""
+          doctorOffice=""
           onPrevWeek={() => navigateWeek(-1)}
           onNextWeek={() => navigateWeek(1)}
         />
       ) : (
-        <PageLoader />
+        <section className={TABLE_CARD}>
+          <TableSkeleton />
+        </section>
       )}
-    </QueryBoundary>
+
+      {canBook && (
+        <AppointmentBookingModal
+          open={bookingOpen}
+          onClose={() => setBookingOpen(false)}
+          defaultDate={listDate}
+          // окно остаётся открытым («Записать ещё одного»), список обновляем сразу
+          onBooked={() => void refresh()}
+        />
+      )}
+    </div>
   );
 }

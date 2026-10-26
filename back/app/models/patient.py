@@ -16,7 +16,6 @@ class Patient(Base):
     birth_date: Mapped[date] = mapped_column(Date, nullable=False)
     gender: Mapped[str] = mapped_column(String(1), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    area: Mapped[str] = mapped_column(String(50), nullable=False)
     short_name: Mapped[str] = mapped_column(String(50), nullable=False)
     address: Mapped[str | None] = mapped_column(String(300), nullable=True)
     blood_type: Mapped[str | None] = mapped_column(String(20), nullable=True)

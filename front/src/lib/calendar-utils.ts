@@ -30,20 +30,6 @@ export const calendarStatusStyles: Record<
   },
 };
 
-export const TIME_SLOTS = [
-  "08:00",
-  "08:30",
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-] as const;
-
 export type CalendarWeekDay = {
   key: string;
   label: string;

@@ -42,7 +42,7 @@
 |---|---|---|
 | `auth.py` | `/api/auth` | вход, refresh, выход, смена пароля, текущий пользователь |
 | `employees.py` | `/api/employees` | список врачей для записи, «я» (`/me`), профиль врача, правка своего профиля |
-| `appointments.py` | `/api/appointments` | расписание, очередь, слоты, запись, осмотр, отмена/перенос, статистика недели |
+| `appointments.py` | `/api/appointments` | расписание, очередь, номера пациентов, запись, осмотр, отмена/перенос, статистика недели |
 | `patients.py` | `/api/patients` | список/создание/правка пациентов, история, витальные, прививки, осмотр |
 | `search.py` | `/api/search` | глобальный поиск пациентов и приёмов |
 | `icd10.py` | `/api/icd10` | справочник МКБ-10 (локальный JSON `app/data/icd10_common.json`) |
@@ -65,7 +65,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | `/` | `app/(doctors)/page.tsx` | дашборд: текущий приём, приёмы на сегодня, «ближайшие», статистика недели (врач/главврач), быстрый поиск по ИИН (ресепшен) |
 | `/appointments` | `appointments/page.tsx` | список на день + календарь недели, форма записи |
 | `/queue` | `queue/page.tsx` | живая очередь на сегодня |
-| `/patients` | `patients/page.tsx` | список пациентов (поиск, фильтр по участку, пагинация по 8) |
+| `/patients` | `patients/page.tsx` | список пациентов (поиск, пагинация по 8) |
 | `/patients/[id]` | `patients/[id]/page.tsx` | карточка пациента: вкладки «Общее», «История», «Паспорт здоровья», «Прививки» |
 | `/patients/[id]/examination` | `patients/[id]/examination/page.tsx` | форма осмотра |
 | `/services` | `services/page.tsx` | прейскурант |
@@ -75,7 +75,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | `/refunds` | `refunds/page.tsx` | очередь заявок на возврат |
 | `/reports/daily` | `reports/daily/page.tsx` | отчёт за день |
 | `/profile` | `profile/page.tsx` | профиль врача (редактирование о себе, контактов, графика) |
-| `/settings` | `settings/page.tsx` | заглушка (см. раздел 9) |
+| `/settings` | — | редирект на `/profile`: «Настройки» слиты с «Профилем» (см. раздел 9) |
 
 Единые точки фронтенда: `lib/api/api.ts` (`apiGet/apiPost/apiPatch`, `credentials: "include"`, `ApiError`), `lib/api/server-auth.ts` (RSC читает cookie `access_token` и шлёт `Authorization: Bearer`), `lib/roles.ts` (матрица ролей на фронте, `NAV_ITEMS`), `components/auth/RoleGate.tsx`, `proxy.ts` (Next.js proxy/middleware).
 
@@ -144,7 +144,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 ## 3. Роли
 
-Общее для всех ролей: `GET /api/auth/me`, `POST /api/auth/change-password`, `POST /api/auth/logout`, `POST /api/auth/refresh`, `GET /api/employees/me`, страницы `/` и `/settings`.
+Общее для всех ролей: `GET /api/auth/me`, `POST /api/auth/change-password`, `POST /api/auth/logout`, `POST /api/auth/refresh`, `GET /api/employees/me`, страницы `/` и `/profile` («Профиль» и «Настройки» — одна страница; `/settings` перенаправляет на неё).
 `GET /api/employees/me/profile` и `PATCH /api/employees/me` формально пускают любую роль, но для сотрудника без `doctor_profile` отвечают `404 «Профиль врача не найден»` — по факту работают только для `doctor` и `head_doctor`.
 
 В пунктах «Нельзя» перечислено то, что явно закрыто (403) или не существует в коде.
@@ -153,16 +153,16 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 **Кто и за что отвечает.** Регистрирует пациентов, записывает к любому врачу, отменяет/переносит любые приёмы, ведёт кассу: открывает/закрывает свою смену, выставляет счета, принимает оплаты, создаёт заявки на возврат.
 
-**Страницы.** `/`, `/appointments`, `/queue`, `/patients`, `/patients/[id]`, `/services`, `/cash-register`, `/refunds`, `/invoices/[id]`, `/invoices/[id]/receipt`, `/settings`. На дашборде дополнительно «быстрый поиск по ИИН» (`ReceptionQuickSearch`: найден → ссылка на карточку, не найден → модалка создания с подставленным ИИН). `/profile` показывает заглушку «только для сотрудников с врачебным профилем».
+**Страницы.** `/` («Стойка регистратуры», см. 6.1а), `/appointments`, `/queue`, `/patients`, `/patients/[id]`, `/services` (в меню «Прейскурант»), `/cash-register` (вкладки «Смена», «Счета», «Мои заявки»; над ними сводка кассы), `/invoices/[id]`, `/invoices/[id]/receipt`, `/profile`. Страница `/refunds` (очередь решений по возвратам) регистратору закрыта («Нет доступа») — её заявки он видит вкладкой «Мои заявки». На `/profile` у регистратора — карточка учётной записи и блок настроек (профиля врача нет).
 
 **API.**
 
 | Метод и путь | Что делает |
 |---|---|
-| `GET /api/appointments?from=&to=`, `/week`, `/today`, `/queue`, `/current` | расписание и очередь (все врачи) |
-| `GET /api/appointments/available-slots?employeeId=&date=` | свободные слоты врача |
+| `GET /api/appointments?from=&to=&patientId=&status=&completedWithin=`, `/week`, `/today`, `/queue`, `/current` | расписание и очередь (все врачи). Фильтры: `patientId` (приёмы пациента), `status` (несколько: `scheduled,in_progress` или повтором), `completedWithin` (минуты: завершённые за последние N минут по часам БД, новые первыми). Нужен хотя бы один из `from`/`to`, `patientId`, `completedWithin` — иначе 422 |
+| `GET /api/appointments/queue-info?employeeId=&date=` | подсказка для записи: работает ли врач в этот день, сколько ждёт, какой номер получит новый пациент |
 | `POST /api/appointments` | запись пациента к врачу |
-| `PATCH /api/appointments/{id}` | **только** отмена (`status=cancelled`, `cancellationReason`) и перенос (`date`/`time`) любого приёма |
+| `PATCH /api/appointments/{id}` | **только** отмена (`status=cancelled` + обязательный `cancellationReasonCode`, для `other` ещё `cancellationReason` текстом) и перенос (`date`/`time`/`employeeId` — можно сменить врача) любого **запланированного** приёма |
 | `GET /api/employees?role=doctor` | список врачей для формы записи |
 | `GET /api/patients`, `GET /api/patients/{id}` | список и карточка |
 | `POST /api/patients` | создание пациента |
@@ -171,11 +171,12 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | `GET /api/search?q=` | глобальный поиск |
 | `GET /api/services` | прейскурант |
 | `POST /api/cash-shifts`, `GET /api/cash-shifts`, `GET /api/cash-shifts/current`, `POST /api/cash-shifts/{id}/close`, `GET /api/cash-shifts/{id}/report` | свои смены (`GET /api/cash-shifts` отдаёт только смены этого кассира; `close` и `report` чужой смены → 403) |
-| `GET /api/invoices`, `GET /api/invoices/{id}`, `POST /api/invoices`, `PATCH /api/invoices/{id}/items`, `POST /api/invoices/{id}/issue`, `POST /api/invoices/{id}/cancel` | счета |
+| `GET /api/invoices`, `GET /api/invoices/{id}`, `POST /api/invoices`, `PATCH /api/invoices/{id}/items`, `POST /api/invoices/{id}/issue`, `POST /api/invoices/{id}/cancel` | счета. Список: фильтры `status` (несколько), `appointmentId` (несколько), `from`/`to`, `limit`/`offset`; в строках добавлены `patientName`, `paidAmount`, `awaitingApproval` (черновик со скидкой выше порога без подтверждения). `POST` с `appointmentId` проверяет, что приём существует (404) и принадлежит этому пациенту (400) |
+| `GET /api/reports/reception-summary` | сводка стойки одним запросом: открытая смена и принято за неё, ждущие/идущие приёмы, врачи сегодня с кабинетом, счета к оплате и черновики, ждущие подтверждения скидки (reception, head_doctor) |
 | `GET/POST /api/invoices/{id}/payments` | список и приём оплат |
-| `GET/POST /api/refund-requests` | список и создание заявок на возврат |
+| `GET/POST /api/refund-requests` | список и создание заявок на возврат; `?mine=true` — только заявки текущего сотрудника (вкладка «Мои заявки») |
 
-**Может.** Создавать пациентов; читать пациентов, историю, прейскурант; создавать приёмы; читать расписание; отменять/переносить любые приёмы; править ФИО, ИИН, дату рождения, пол, телефон, адрес, участок, группу крови пациента; создавать и выставлять счета, отменять счета в статусах `draft`/`unpaid`; принимать оплату; создавать заявки на возврат; открывать/закрывать свою смену и смотреть отчёт по ней.
+**Может.** Создавать пациентов; читать пациентов, историю, прейскурант; создавать приёмы; читать расписание; отменять/переносить любые приёмы; править ФИО, ИИН, дату рождения, пол, телефон, адрес, группу крови пациента; создавать и выставлять счета, отменять счета в статусах `draft`/`unpaid`; принимать оплату; создавать заявки на возврат; открывать/закрывать свою смену и смотреть отчёт по ней.
 
 **Нельзя (403 или отсутствует).** Начинать/завершать приём и заполнять осмотр (`status`, жалобы, объективный статус, диагноз, назначения → 403); читать витальные показатели и прививки (`/health-metrics`, `/vaccinations`) и форму осмотра (`/examination`); МКБ-10; статистику недели; создавать/править услуги; подтверждать скидку; решать по возврату; чужие смены и их отчёты; дневной отчёт; править профиль врача (404). Удалять что-либо нельзя нигде.
 
@@ -183,7 +184,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 **Кто и за что отвечает.** Ведёт приём: начинает и завершает приём, заполняет осмотр, ставит диагноз по МКБ-10, назначает препараты (свободным текстом), отменяет/переносит **свои** приёмы, ведёт свой профиль и график.
 
-**Страницы.** `/`, `/appointments`, `/queue`, `/patients`, `/patients/[id]` (все 4 вкладки), `/patients/[id]/examination`, `/services` (просмотр), `/profile`, `/settings`. На дашборде — виджеты расписания и «Статистика недели».
+**Страницы.** `/`, `/appointments`, `/queue`, `/patients`, `/patients/[id]` (все 4 вкладки), `/patients/[id]/examination`, `/profile`. На дашборде — виджеты расписания и «Статистика недели».
 
 **API.**
 
@@ -191,7 +192,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 |---|---|
 | `GET /api/appointments*` (список, week, today, queue, current) | расписание и очередь |
 | `GET /api/appointments/stats/week` | статистика недели (только `doctor`/`head_doctor`) |
-| `GET /api/appointments/available-slots`, `POST /api/appointments` | слоты и запись (к любому врачу) |
+| `GET /api/appointments/queue-info`, `POST /api/appointments` | подсказка очереди и запись (к любому врачу) |
 | `PATCH /api/appointments/{id}` | осмотр (жалобы, объективный статус, диагнозы, назначения, `durationMinutes`), смена статуса (`in_progress`/`completed`/…); отмена/перенос — только свой приём |
 | `GET /api/employees?role=doctor` | список врачей |
 | `GET /api/employees/me/profile`, `PATCH /api/employees/me` | свой профиль: `about`, `phone`, `email`, график |
@@ -199,7 +200,6 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | `GET /api/patients/{id}/history`, `/visit-history`, `/health-metrics`, `/vaccinations`, `/examination` | медицинские данные пациента |
 | `GET /api/icd10?q=` | поиск диагноза |
 | `GET /api/search?q=` | поиск |
-| `GET /api/services` | прейскурант (чтение) |
 
 **Может.** Создавать пациентов и приёмы; заполнять осмотр **любого** приёма (проверки «приём назначен этому врачу» для осмотра/смены статуса в коде нет); отменять/переносить только приёмы, где `appointment.employee_id == свой id`; править свой профиль.
 
@@ -209,19 +209,19 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 **Кто и за что отвечает.** Клинический персонал с доступом на чтение; в реализованном коде никаких операций записи, кроме общих (смена пароля), у роли нет. Работа со складом/процедурами (по планам) не реализована.
 
-**Страницы.** `/`, `/appointments` (просмотр), `/queue` (просмотр), `/patients`, `/patients/[id]` (все 4 вкладки), `/services` (просмотр), `/settings`. Форма записи на `/appointments` в UI не скрыта, но её запросы (`/employees?role=doctor`, `POST /appointments`) вернут 403.
+**Страницы.** `/`, `/appointments` (просмотр), `/queue` (просмотр), `/patients`, `/patients/[id]` (все 4 вкладки), `/profile`. Форма записи на `/appointments` в UI не скрыта, но её запросы (`/employees?role=doctor`, `POST /appointments`) вернут 403.
 
 **API.** `GET /api/appointments`, `/week`, `/today`, `/queue`, `/current`; `GET /api/patients`, `/patients/{id}`, `/patients/{id}/history`, `/visit-history`, `/health-metrics`, `/vaccinations`; `POST /api/patients`; `GET /api/search`; `GET /api/services`.
 
-**Может.** Читать расписание, очередь, карточки пациентов, историю, витальные показатели, прививки, прейскурант; создавать пациентов.
+**Может.** Читать расписание, очередь, карточки пациентов, историю, витальные показатели, прививки; создавать пациентов.
 
-**Нельзя.** Записывать на приём, слоты (403); `PATCH /appointments/{id}` (403); осмотр, МКБ-10, статистика недели; правка демографии; счета/оплаты/смены/возвраты/отчёты; управление услугами.
+**Нельзя.** Записывать на приём (403); `PATCH /appointments/{id}` (403); осмотр, МКБ-10, статистика недели; правка демографии; счета/оплаты/смены/возвраты/отчёты; управление услугами.
 
 ### 3.4 accountant — Бухгалтер
 
 **Кто и за что отвечает.** Роль объявлена в `EmployeeRole`, но **бухгалтерского функционала в коде нет** (раздел 9). Фактически у роли только доступ к картотеке.
 
-**Страницы.** В меню: «Дашборд» (заглушка «Рабочее пространство для вашей роли появится на следующих этапах»), «Пациенты», «Настройки». Открыв `/patients/[id]`, страница дополнительно запрашивает `GET /patients/{id}/history`, который для `accountant` возвращает 403, поэтому по коду карточка пациента для этой роли завершается ошибкой (отлавливается только 404).
+**Страницы.** В меню: «Дашборд» (заглушка «Рабочее пространство для вашей роли появится на следующих этапах»), «Пациенты», «Профиль». Открыв `/patients/[id]`, страница дополнительно запрашивает `GET /patients/{id}/history`, который для `accountant` возвращает 403, поэтому по коду карточка пациента для этой роли завершается ошибкой (отлавливается только 404).
 
 **API.** `GET /api/patients`, `POST /api/patients`, `GET /api/patients/{id}`, `GET /api/search`.
 
@@ -233,7 +233,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 **Кто и за что отвечает.** Врач + руководитель: объединение прав врача и регистратуры + исключительные права утверждения (скидки, возвраты), управление прейскурантом, дневной отчёт, все кассовые смены. Имеет `doctor_profile`, ведёт приём.
 
-**Страницы.** Все пункты меню: `/`, `/appointments`, `/queue`, `/patients`, `/patients/[id]`, `/patients/[id]/examination`, `/services`, `/cash-register`, `/refunds`, `/reports/daily`, `/profile`, `/settings`, а также `/invoices/[id]`, `/invoices/[id]/receipt`.
+**Страницы.** Все пункты меню: `/`, `/appointments`, `/queue`, `/patients`, `/patients/[id]`, `/patients/[id]/examination`, `/services`, `/cash-register`, `/refunds`, `/reports/daily`, `/profile`, а также `/invoices/[id]`, `/invoices/[id]/receipt`.
 
 **API.** Все эндпоинты `reception` и `doctor`, плюс:
 
@@ -253,9 +253,9 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 ### 3.6 admin — Администратор
 
-**Кто.** Роль есть в enum и в `seed.py`, но **ни один бизнес-эндпоинт её не допускает**. Может войти, получить `/auth/me`, `/employees/me`, сменить пароль.
+**Кто.** Роль есть в enum и в `seed.py`. Единственный бизнес-доступ — прейскурант: `admin` читает и ведёт услуги (`/api/services`), остальные бизнес-эндпоинты её не допускают. Может войти, получить `/auth/me`, `/employees/me`, сменить пароль.
 
-**Страницы.** `/` (заглушка), `/settings`. Все остальные страницы показывают «недоступно для вашей роли». `/patients` для `admin` недоступен (не входит в `ANY_STAFF_ROLES`).
+**Страницы.** `/` (заглушка), `/services` (создание и правка услуг), `/profile`. Все остальные страницы показывают «недоступно для вашей роли». `/patients` для `admin` недоступен (не входит в `ANY_STAFF_ROLES`).
 
 **Нельзя.** Любые операции с пациентами, приёмами, деньгами. Функций администрирования (пользователи, миграции, отладка) в коде нет.
 
@@ -282,7 +282,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | МКБ-10 (справочник) | — | R | — | — | R | — |
 | **Препараты / склад** | нет сущностей | нет | нет | нет | нет | нет |
 | Назначения (`prescriptions`, свободный текст) | — | C R U D (полная замена списка внутри осмотра) | — | — | C R U D (то же) | — |
-| **Услуги** (прейскурант) | R | R | R | — | C R U (D = `isActive=false`) | — |
+| **Услуги** (прейскурант) | R | — | — | — | C R U (D = `isActive=false`) | C R U (D = `isActive=false`) |
 | **Счета** | C R U (позиции draft, выставить, отмена) | — | — | — | C R U + подтверждение скидки | — |
 | **Платежи** | C R (append-only: U/D нет) | — | — | — | C R | — |
 | **Заявки на возврат** | C R | — | — | — | C R + решение (approve/reject) | — |
@@ -300,9 +300,9 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 | Эндпоинт | Роли |
 |---|---|
-| `GET /api/appointments`, `/week`, `/queue`, `/today`, `/current` | reception, doctor, nurse, head_doctor |
+| `GET /api/appointments` (в т.ч. `?patientId=&status=&completedWithin=`), `/week`, `/queue`, `/today`, `/current` | reception, doctor, nurse, head_doctor |
 | `GET /api/appointments/stats/week` | doctor, head_doctor |
-| `GET /api/appointments/available-slots`, `POST /api/appointments` | reception, doctor, head_doctor |
+| `GET /api/appointments/queue-info`, `POST /api/appointments` | reception, doctor, head_doctor |
 | `PATCH /api/appointments/{id}` | reception, doctor, head_doctor (+ проверки в теле, см. 6.2) |
 | `GET /api/patients`, `POST /api/patients`, `GET /api/patients/{id}`, `GET /api/search` | reception, doctor, nurse, accountant, head_doctor |
 | `PATCH /api/patients/{id}` | reception, head_doctor |
@@ -311,15 +311,16 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | `GET /api/patients/{id}/examination`, `GET /api/icd10` | doctor, head_doctor |
 | `GET /api/employees?role=doctor` | reception, doctor, head_doctor |
 | `GET /api/employees/me`, `/me/profile`, `PATCH /api/employees/me` | любая активная роль (профиль — 404 без `doctor_profile`) |
-| `GET /api/services` | reception, doctor, nurse, head_doctor |
-| `POST /api/services`, `PATCH /api/services/{id}` | head_doctor |
+| `GET /api/services` | reception, head_doctor, admin |
+| `POST /api/services`, `PATCH /api/services/{id}` | head_doctor, admin |
 | `GET/POST /api/cash-shifts`, `/current`, `POST /{id}/close` | reception, head_doctor (чужая смена — только head_doctor) |
 | `GET /api/cash-shifts/{id}/report` | reception (своя смена), head_doctor |
-| `GET/POST /api/invoices`, `GET /{id}`, `PATCH /{id}/items`, `POST /{id}/issue`, `/cancel`, `GET/POST /{id}/payments` | reception, head_doctor |
+| `GET/POST /api/invoices` (список с фильтрами `status`, `appointmentId`, `from`/`to`, `limit`/`offset`), `GET /{id}`, `PATCH /{id}/items`, `POST /{id}/issue`, `/cancel`, `GET/POST /{id}/payments` | reception, head_doctor |
 | `POST /api/invoices/{id}/approve-discount` | head_doctor |
-| `GET/POST /api/refund-requests` | reception, head_doctor |
+| `GET/POST /api/refund-requests` (`?mine=true`) | reception, head_doctor |
 | `POST /api/refund-requests/{id}/approve`, `/reject` | head_doctor |
 | `GET /api/reports/daily` | head_doctor |
+| `GET /api/reports/reception-summary` | reception, head_doctor |
 
 ---
 
@@ -356,7 +357,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 **`audit_log`** — id PK; actor_user_id FK→users.id NULL; entity_type varchar(50) NOT NULL; entity_id int NULL; action varchar(50) NOT NULL; changes JSONB NULL; ip varchar(64) NULL; created_at default now().
 
-**`doctor_profiles`** — id PK; employee_id FK→employees.id UNIQUE NOT NULL; specialty, qualification_category, area (участок), office, workplace, license_number, license_valid_until, certificate_number, certificate_valid_until, about (до 1000), experience_years (int) — все NULL.
+**`doctor_profiles`** — id PK; employee_id FK→employees.id UNIQUE NOT NULL; specialty, qualification_category, office, workplace, license_number, license_valid_until, certificate_number, certificate_valid_until, about (до 1000), experience_years (int) — все NULL.
 
 **`doctor_education`** — id PK; doctor_profile_id FK→doctor_profiles.id (index); year varchar(4); title varchar(300); description varchar(500).
 
@@ -364,7 +365,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 ### 5.2 Пациенты и медицинские данные
 
-**`patients`** — id PK; iin varchar(12) **UNIQUE** NOT NULL; full_name varchar(200); birth_date date; gender varchar(1) (значения «М»/«Ж» в данных); phone varchar(20) NULL; area varchar(50) NOT NULL (участок); short_name varchar(50) NOT NULL (генерируется бэкендом: «Фамилия И.О.»); address varchar(300) NULL; blood_type varchar(20) NULL; dispensary bool default false; updated_at timestamp NULL; updated_by_id FK→employees.id NULL.
+**`patients`** — id PK; iin varchar(12) **UNIQUE** NOT NULL; full_name varchar(200); birth_date date; gender varchar(1) (значения «М»/«Ж» в данных); phone varchar(20) NULL; short_name varchar(50) NOT NULL (генерируется бэкендом: «Фамилия И.О.»); address varchar(300) NULL; blood_type varchar(20) NULL; dispensary bool default false; updated_at timestamp NULL; updated_by_id FK→employees.id NULL.
 
 **`patient_diseases`** — id PK; patient_id FK→patients.id (index); label varchar(100); variant enum `disease_tag_variant` (green, purple, red, blue, yellow, orange — цвет тега).
 
@@ -378,7 +379,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 ### 5.3 Приёмы
 
-**`appointments`** — id PK; date date (index); time varchar(5) (`HH:MM`); complaint text; status enum `appointment_status` default `scheduled`; diagnosis_code varchar(20) NULL; diagnosis_name varchar(200) NULL; objective_status text NULL; duration_minutes int NULL; patient_id FK→patients.id; employee_id FK→employees.id (лечащий врач); created_by_id FK→employees.id NULL; cancelled_at timestamp NULL; cancelled_by_id FK→employees.id NULL; cancellation_reason varchar(300) NULL. **Уникальности (врач, дата, время) в БД нет** — конфликт проверяется кодом.
+**`appointments`** — id PK; date date (index); queue_number int NOT NULL (номер пациента у врача на день, UNIQUE с employee_id+date); time varchar(5) NULL (устарело, не используется); started_at timestamp NULL (когда врач нажал «Начать»); complaint text; status enum `appointment_status` default `scheduled`; diagnosis_code varchar(20) NULL; diagnosis_name varchar(200) NULL; objective_status text NULL; duration_minutes int NULL; patient_id FK→patients.id; employee_id FK→employees.id (лечащий врач); created_by_id FK→employees.id NULL; cancelled_at timestamp NULL; cancelled_by_id FK→employees.id NULL; cancellation_reason varchar(300) NULL (текст — только для кода `other`); cancellation_reason_code enum `cancellation_reason_code` NULL (patient_cancelled, patient_no_contact, doctor_unavailable, rescheduled, other; у отменённых до появления справочника проставлен `other`, новые отмены без кода API отвергает); completed_at timestamp NULL (момент завершения приёма; для старых завершённых заполнен как «дата + время + длительность»). **Уникальности (врач, дата, время) в БД нет** — конфликт проверяется кодом.
 
 **`prescriptions`** — id PK; appointment_id FK→appointments.id (index); medication varchar(200); dosage varchar(200); frequency varchar(200) (в API называется `duration`). Свободный текст, связи с каким-либо справочником препаратов нет.
 
@@ -404,7 +405,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 - Сотрудник 1—0..1 профиль врача (`DoctorProfile`); профиль врача 1—N записей образования; сотрудник 1—N строк графика (`Schedule`).
 - Пациент 1—N приёмы; 1—N хронические заболевания; 1—N аллергии; 1—N прививки; 1—N госпитализации; 1—N витальные показатели; 1—N счета.
 - Сотрудник (врач) 1—N приёмы (как лечащий); сотрудник 1—N приёмы (как создавший); сотрудник 1—N приёмы (как отменивший); сотрудник 1—N госпитализации (лечащий).
-- Приём 1—N назначения (`Prescription`); приём 0..1—N счета (связь `Invoice.appointment_id` опциональна).
+- Приём 1—N назначения (`Prescription`); приём 0..1—N счета (связь `Invoice.appointment_id` опциональна; при создании счёта по приёму бэкенд проверяет, что приём принадлежит тому же пациенту).
 - Счёт 1—N позиции (`InvoiceItem`); позиция N—1 услуга (`Service`); позиция N—0..1 исполнитель (поле не используется).
 - Счёт 1—N платежи; платёж N—0..1 кассовая смена; платёж 0..1—1 исходный платёж (сторно, самоссылка).
 - Счёт 1—N заявки на возврат; заявка N—1 платёж; заявка 0..1—1 результирующий платёж.
@@ -421,23 +422,31 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 | Шаг | Роль | Действие | Эндпоинт |
 |---|---|---|---|
 | 1 | reception (также любая из doctor, nurse, accountant, head_doctor) | Ищет пациента по ИИН/ФИО. На дашборде регистратуры форма «ИИН»: запрашивается список с `search=ИИН`, точное совпадение по ИИН среди первых 5 результатов → показывается пациент со ссылкой на карточку | `GET /api/patients?search=&limit=5` |
-| 2 | то же | Не найден → модалка создания с подставленным ИИН: ФИО, ИИН, дата рождения, пол, телефон, адрес, участок, группа крови, «диспансерный учёт» | `POST /api/patients` |
+| 2 | то же | Не найден → модалка создания с подставленным ИИН: ФИО, ИИН, дата рождения, пол, телефон, адрес, группа крови, «диспансерный учёт» | `POST /api/patients` |
 | 3 | backend | Дубликат ИИН → `409 «Пациент с таким ИИН уже существует»`; `short_name` строится из ФИО («Фамилия И.О.»). Формат ИИН не валидируется (только уникальность и длина колонки 12) | |
-| 4 | reception / doctor / head_doctor | На `/appointments` открывает форму записи: выбор пациента (в списке — первые 100 пациентов, `limit=100`), врача (при выборе пациента подставляется врач с тем же `area`, затем можно сменить), даты, свободного слота, жалобы (обязательна) | `GET /api/employees?role=doctor`, `GET /api/appointments/available-slots`, `POST /api/appointments` |
-| 5 | backend | Проверки при создании: пациент существует (404); врач существует, `status=active` и имеет `doctor_profile` (404 «Врач не найден»); в этот день недели у врача включён график и время `start <= time < end` (иначе 400); нет другого приёма у врача на ту же дату/время (409 «На это время уже есть приём»); создаётся приём `scheduled`, `created_by_id` = текущий сотрудник | |
-| 6 | reception, head_doctor (врач — свои) | Перенос: смена `date`/`time`, те же проверки графика и конфликта (приём сам себе конфликтом не считается) | `PATCH /api/appointments/{id}` |
-| 7 | reception, head_doctor (врач — свои) | Отмена: `status=cancelled`; сохраняются `cancelled_at`, `cancelled_by_id`, `cancellation_reason` (необязательна) | `PATCH /api/appointments/{id}` |
+| 4 | reception / doctor / head_doctor | Форма записи (одна на стойку, карточку пациента, блок «Вышли от врача» и `/appointments`): пациент (подставлен или поиск **на сервере** по ФИО/ИИН от 2 символов, `limit=8`), врач (по умолчанию врач с тем же `area`, при «Записать повторно» — врач прежнего приёма; можно сменить), дата, время — свободный слот **или введённое вручную** («Другое время…»), жалоба (обязательна). Если на выбранную дату слотов нет, дата по умолчанию сама сдвигается на ближайший день со слотами (выбранную вручную не трогает), ближайшие дни показаны кнопками; уже прошедшие слоты за сегодня не предлагаются. После записи окно остаётся: «Записать ещё одного» (пациент и жалоба сброшены, врач и дата сохранены) или «Готово» | `GET /api/employees?role=doctor`, `GET /api/patients?search=`, `GET /api/appointments/available-slots`, `POST /api/appointments` |
+| 5 | backend | Проверки при создании: пациент существует (404); врач существует, `status=active` и имеет `doctor_profile` (404 «Врач не найден»); в этот день недели у врача включён график и время `start <= time < end` (иначе 400); нет другого **неотменённого** приёма у врача на ту же дату/время (409 «На это время уже есть приём»); создаётся приём `scheduled`, `created_by_id` = текущий сотрудник | |
+| 6 | reception, head_doctor (врач — свои) | Перенос (окно «Перенос приёма» — одно на стойку, очередь, список): новая `date`/`time` и, при необходимости, **другой врач** (`employeeId`: активный клиницист, его график и конфликт проверяются заново; приём сам себе конфликтом не считается). Только для приёма в статусе `scheduled` (иначе 409) | `PATCH /api/appointments/{id}` |
+| 7 | reception, head_doctor (врач — свои) | Отмена (окно «Отмена приёма»): подтверждение и **обязательная причина из справочника** — `patient_cancelled` пациент отменил, `patient_no_contact` не дозвонились, `doctor_unavailable` врач не принимает, `rescheduled` перенос, `other` другое (тогда обязателен текст до 300 символов). Без кода — 422. Текст сохраняется только для `other`. Только из `scheduled` (иначе 409). Пишутся `cancelled_at`, `cancelled_by_id` | `PATCH /api/appointments/{id}` |
 
-Слоты: сетка с шагом 30 минут по графику врача на день недели; из неё исключаются времена, занятые приёмами, **кроме отменённых**. Если график на этот день не включён — пустой список.
-Замечание по коду: проверка конфликта при создании/переносе не фильтрует по статусу, поэтому на слот отменённого приёма POST/перенос всё равно даст 409, хотя `available-slots` его показывает свободным.
+*(Устарело: время слотов заменено номером в очереди — см. раздел «Изменения: номер в очереди вместо времени».)* Слоты: сетка с шагом 30 минут по графику врача на день недели; из неё исключаются времена, занятые приёмами, **кроме отменённых** — и запись, и перенос теперь тоже не считают отменённый приём конфликтом (раньше слот предлагался, а сервер отвечал 409). Если график на этот день не включён — пустой список. Время вручную («Другое время…») не обязано лежать на сетке: бэкенд проверяет только рабочие часы врача и занятость.
+
+### 6.1а Стойка регистратуры (`/`, роль reception)
+
+Один экран, сводка приходит одним запросом `GET /api/reports/reception-summary`, обновляется каждые 30 секунд.
+
+1. **«Кто у стойки».** Поле ИИН или фамилии (автофокус, Enter, Esc очищает): 12 цифр — точный поиск по ИИН, иначе поиск по ФИО (до 5 совпадений списком). Найденный пациент: возраст, последний *завершённый* визит (дата · врач; из `/history`), **ближайший приём** — первый неотменённый приём пациента с сегодняшней даты (`GET /api/appointments?patientId=&status=scheduled,in_progress&from=сегодня`): «Записан на 26 окт, 09:00 · врач · каб. 3». Кнопки: «Записать», «Перенести» и «Отменить» (только если ближайший приём `scheduled`), «Карточка». Не найден — «Завести карточку»: создание пациента и сразу запись, без перехода на карточку.
+2. **«Вышли от врача».** Приёмы, завершённые за последние 2 часа, по всем врачам (`completedWithin=120`; момент завершения — `completed_at`, при его отсутствии — начало + длительность). В строке: время завершения, пациент, врач; «Записать повторно» (тот же врач, дата через неделю) и «Выставить счёт» (создаёт счёт с `appointment_id` этого приёма) либо ссылка «Счёт №…», если неотменённый счёт по приёму уже есть. Пусто — «Пока никто не завершил приём». Показывается 3 строки, остальное — «и ещё N».
+3. **Метрики:** ждут приёма (`scheduled` сегодня), на приёме, не оплачено (`unpaid`+`partial`), «В кассе» — принято за открытую смену всеми способами (возвраты вычтены); без открытой смены — «—».
+4. **«Врачи сейчас»** (врач, кабинет, на приёме/свободен, сколько ждут) и **«Ждут оплаты»** (счета `unpaid`/`partial` с остатком; черновики со скидкой выше порога, ждущие главврача, помечены «ждёт главврача» — выставить такой счёт нельзя, поэтому это бывает только у черновика).
 
 ### 6.2 Живая очередь и ход приёма
 
 1. **Очередь** (`/queue`, `GET /api/appointments/queue`): все приёмы **на сегодня** по всем врачам со статусами `scheduled` и `in_progress`, сортировка по времени. Видят reception, doctor, nurse, head_doctor.
 2. **«Начать»** (`doctor`, `head_doctor`): `PATCH /api/appointments/{id}` `{status: "in_progress"}`. Побочный эффект: прочие приёмы **того же врача на ту же дату** со статусом `in_progress` автоматически возвращаются в `scheduled`.
 3. **«Осмотр»**: ссылка на `/patients/{patientId}/examination` (см. 6.3).
-4. **«Завершить»** (`doctor`, `head_doctor`): `PATCH {status: "completed"}`; если у приёма не задана `duration_minutes`, ставится значение из тела запроса, а если его нет — **18 минут**.
-5. **Отмена/перенос** прямо в очереди — `AppointmentActions` (кнопки показываются для `reception`/`head_doctor` и для `doctor` на своём приёме; для `completed`/`cancelled` скрыты).
+4. **«Завершить»** (`doctor`, `head_doctor`): `PATCH {status: "completed"}`; если у приёма не задана `duration_minutes`, ставится значение из тела запроса, а если его нет — **18 минут**; проставляется `completed_at` (часы БД).
+5. **Отмена/перенос** прямо в очереди и в списке приёмов — `AppointmentActions`, который открывает те же окна «Отмена приёма» и «Перенос приёма», что и стойка (кнопки показываются для `reception`/`head_doctor` и для `doctor` на своём приёме и **только у запланированных приёмов**; у `in_progress`, `completed`, `cancelled` скрыты).
 6. Дашборд: «Текущий приём» — первый приём **за сегодня** со статусом `in_progress` среди всех врачей (`GET /api/appointments/current`).
 
 Допустимые переходы статусов приёма — в разделе 7.1.
@@ -503,7 +512,7 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 ### 6.8 Профиль врача
 
-`doctor`/`head_doctor` на `/profile` редактируют «О себе», телефон, email и график (включено/время по дням) — `PATCH /api/employees/me`; запись аудита `update_profile`. Метрики профиля считаются на лету: пациенты участка, диспансерные, приёмы с начала месяца (ключ ответа исторически `appointmentsInMay`), стаж.
+`doctor`/`head_doctor` на `/profile` редактируют «О себе», телефон, email и график (включено/время по дням) — `PATCH /api/employees/me`; запись аудита `update_profile`. Метрики профиля считаются на лету: приёмы с начала месяца (ключ ответа исторически `appointmentsInMay`), стаж.
 
 ### 6.9 Поиск
 
@@ -519,17 +528,17 @@ Next.js App Router. Серверные страницы (RSC) сами вызы�
 
 ### 7.1 `AppointmentStatus`: scheduled, in_progress, completed, cancelled
 
-Backend **не проверяет допустимость перехода** (машина состояний в планах, раздел 9): `PATCH` принимает любое значение `status`. Ниже — переходы, которые выполняет интерфейс.
+Полной машины состояний на backend пока нет (в планах, раздел 9): `PATCH` принимает любое значение `status`, **кроме** отмены и переноса — они разрешены только из `scheduled` (иначе 409 «Отменить или перенести можно только запланированный приём»). Ниже — переходы, которые выполняет интерфейс.
 
 | Из → в | Кто | Условия и побочные эффекты |
 |---|---|---|
 | (создание) → `scheduled` | reception, doctor, head_doctor | график врача, нет конфликта |
 | `scheduled` → `in_progress` | doctor, head_doctor | «Начать» или «Сохранить черновик» осмотра; остальные `in_progress` этого врача на эту дату возвращаются в `scheduled` |
-| `in_progress` → `completed` | doctor, head_doctor | «Завершить» или «Завершить приём»; длительность по умолчанию 18 мин |
-| `scheduled`/`in_progress` → `cancelled` | reception, head_doctor (любой); doctor (свой) | пишутся `cancelled_at/by`, причина |
-| `scheduled` → `scheduled` (перенос) | reception, head_doctor (любой); doctor (свой) | новые `date`/`time`, проверка графика и конфликта |
+| `in_progress` → `completed` | doctor, head_doctor | «Завершить» или «Завершить приём»; длительность по умолчанию 18 мин; проставляется `completed_at` |
+| `scheduled` → `cancelled` | reception, head_doctor (любой); doctor (свой) | обязателен код причины (для `other` — текст); пишутся `cancelled_at/by`, `cancellation_reason_code` |
+| `scheduled` → `scheduled` (перенос) | reception, head_doctor (любой); doctor (свой) | новые `date`/`time`, возможно другой врач; проверка графика и конфликта (отменённые приёмы слот не держат) |
 
-В UI кнопки отмены/переноса скрыты для `completed` и `cancelled`; backend такие запросы не блокирует.
+Отмена и перенос приёма в любом другом статусе (`in_progress`, `completed`, `cancelled`) — 409 и на backend, и кнопки в UI скрыты.
 
 ### 7.2 `InvoiceStatus`: draft, unpaid, partial, paid, refunded, cancelled
 
@@ -586,9 +595,9 @@ Backend **не проверяет допустимость перехода** (�
 
 ### 8.2 Приёмы и расписание
 - Врач для записи: `status=active` и есть `doctor_profile` (так head_doctor тоже попадает в список).
-- Время приёма — строка `HH:MM`; проверка: график врача на день недели включён и `start <= time < end`. Принадлежность времени 30-минутной сетке при создании/переносе не проверяется (слоты предлагает только сетка).
+- *(Устарело, см. раздел «Изменения: номер в очереди вместо времени».)* Время приёма — строка `HH:MM`; проверка: график врача на день недели включён и `start <= time < end`. Принадлежность времени 30-минутной сетке при создании/переносе не проверяется (слоты предлагает только сетка).
 - Конфликт: один врач — одна пара (дата, время), без учёта статуса; на уровне БД уникальности нет.
-- Права внутри `PATCH /appointments/{id}`: поля осмотра и любой `status`, кроме `cancelled` → только doctor/head_doctor; отмена или перенос → reception, head_doctor или назначенный врач.
+- Права внутри `PATCH /appointments/{id}`: поля осмотра и любой `status`, кроме `cancelled` → только doctor/head_doctor; отмена или перенос → reception, head_doctor или назначенный врач (и только из статуса `scheduled`); перенос к другому врачу (`employeeId`) — те же права, целевой врач должен быть активным клиницистом.
 - При завершении без длительности — 18 минут (захардкожено).
 - Статистика недели (`/stats/week`): неделя пн–сб; всего / завершено / отменено, новые пациенты (первый приём пациента попал на эту неделю), диспансерные (неотменённые приёмы диспансерных пациентов), средняя длительность завершённых.
 
@@ -596,7 +605,7 @@ Backend **не проверяет допустимость перехода** (�
 - ИИН уникален (создание и правка, 409); `short_name` автоматически пересобирается при смене ФИО.
 - `PATCH /patients/{id}` (reception, head_doctor) меняет только демографию и проставляет `updated_at`, `updated_by_id`. Поле `dispensary` в `PatientUpdateIn` отсутствует — после создания через API не меняется.
 - «Тип помощи» (`careType`): `inpatient`, если у пациента есть запись `hospitalizations`, иначе `ambulatory`.
-- Список пациентов: поиск по ФИО (подстрока, без учёта регистра) или ИИН; фильтр по участку; сортировка по ФИО; `limit` до 100.
+- Список пациентов: поиск по ФИО (подстрока, без учёта регистра) или ИИН; сортировка по ФИО; `limit` до 100.
 
 ### 8.4 Аутентификация
 - Access-токен 15 минут, refresh 30 дней с ротацией; в БД только хеш refresh; уволенный сотрудник отсекается на каждом запросе.
@@ -641,11 +650,11 @@ Backend **не проверяет допустимость перехода** (�
 - **Поля зарплаты** `salary_type`, `base_salary`, `revenue_percent` в `employees` — хранятся, ни один эндпоинт их не читает и не пишет.
 - **Запись медицинских данных:** для аллергий, хронических заболеваний, прививок, витальных показателей и госпитализаций есть только чтение; эндпоинтов создания/правки нет, данные приходят из `seed.py`.
 - **Многодиагнозность:** UI позволяет выбрать несколько диагнозов, backend сохраняет только первый.
-- **`Invoice.appointment_id`:** принимается схемой создания, но не проверяется и UI не передаётся.
-- **`PATCH /api/invoices/{id}/items`, `GET /api/invoices` и `GET /api/appointments/week`:** эндпоинты есть, в UI не используются (`updateInvoiceItems`, `getInvoices`, `getWeekAppointments` определены в `lib/api`, но не вызываются из компонентов).
-- **Страница `/settings`:** карточки «Уведомления» и «Оформление» — текст «в разработке»; «О системе» показывает «Версия 1.0.0».
+- **`Invoice.appointment_id`:** теперь проверяется (приём существует и принадлежит пациенту) и передаётся из блока «Вышли от врача»; со страницы пациента счёт по-прежнему выставляется без привязки к приёму. Бэкенд не запрещает несколько неотменённых счетов на один приём — от дублей защищает только интерфейс (ссылка «Счёт №…» вместо кнопки).
+- **`PATCH /api/invoices/{id}/items` и `GET /api/appointments/week`:** эндпоинты есть, в UI не используются (`updateInvoiceItems`, `getWeekAppointments` определены в `lib/api`, но не вызываются из компонентов). `GET /api/invoices` используется вкладкой «Счета» кассы и блоком «Вышли от врача».
+- **Блок настроек на `/profile`:** карточки «Уведомления» и «Оформление» — текст «в разработке»; «О системе» показывает «Версия 1.0.0».
 - **Дашборд для `accountant`/`admin`:** текст-заглушка «Рабочее пространство для вашей роли появится на следующих этапах».
-- **`/profile` для ролей без врачебного профиля:** текст-заглушка.
+- **`/profile` для ролей без врачебного профиля:** карточка учётной записи (ФИО, должность) и блок настроек.
 - **Кнопка «Записать на приём»** в шапке карточки пациента (`PatientProfileHeader`) ведёт на `/patients/{id}/examination` (форма осмотра), а не на форму записи.
 - **Форма записи на `/appointments`** не скрыта для `nurse`, хотя её запросы вернут 403.
 - **Карточка пациента для `accountant`:** страница запрашивает `GET /patients/{id}/history` (403 для роли) и не обрабатывает эту ошибку.
@@ -783,3 +792,36 @@ Invoice: paid | partial → refunded | partial   [одобренный возв�
 RefundRequest: pending → approved | rejected   [head_doctor]
 CashShift: open → closed
 ```
+
+
+## Изменения: участок убран, «Профиль» и «Настройки» объединены
+
+- **Участок удалён полностью:** колонки `patients.area` и `doctor_profiles.area` (миграция `b4c5d6e7f8a9`), поле в API, фильтр «Все участки», колонка в списке пациентов, поле в формах создания/правки пациента, показ в профиле врача. Метрики профиля «Пациентов на участке» и «Диспансерных» убраны. В форме записи врач по умолчанию больше не подбирается по участку пациента: он подставляется только при «Записать повторно»/переносе, иначе выбирается вручную.
+- **Профиль врача:** убраны блок «Образование», поле «Категория квалификации» с бейджем категории и строка места работы в контактах (таблицы `doctor_education` и колонки `qualification_category`, `workplace` в БД остаются).
+- **«Профиль» = «Настройки»:** один пункт меню «Профиль» и одна страница `/profile` для всех ролей; `/settings` перенаправляет на неё. Врачу/главврачу — профиль и ниже блок настроек, остальным ролям — карточка учётной записи и блок настроек.
+- **Услуги (прейскурант):** врачам и медсёстрам вкладка и `GET /api/services` закрыты (403, «Нет доступа»). Читает регистратор (цены нужны для счетов), создают и правят — `head_doctor` и `admin`.
+- **Приёмы врача:** `doctor` видит в приёмах только свои (`GET /api/appointments`, `/week`, `/today`, `/queue`, `/current`, `/stats/week` фильтруются по `employee_id`); `head_doctor`, `reception` и `nurse` видят все приёмы клиники.
+
+## Изменения: номер в очереди вместо времени приёма
+
+- **Время записи не назначается.** Регистратор не знает, сколько врач будет принимать пациента, поэтому при записи выбираются врач и дата, а пациент получает порядковый номер у этого врача на день («пациент №1, №2, №3…»). Номер присваивает бэкенд (`POST /api/appointments`), он уникален для пары врач+день и не переиспользуется: у отменённого приёма номер остаётся за ним. Подсказка в форме — `GET /api/appointments/queue-info` (работает ли врач в этот день, сколько ждёт, какой номер будет). Запись возможна только на день, когда врач принимает по графику; часы работы и конфликт слотов не проверяются, `available-slots` удалён.
+- **Перенос** (`PATCH` с `date` и/или `employeeId`) ставит пациента в конец очереди нового дня/врача (новый номер); поле `time` из запроса убрано.
+- **Время видно только фактическое.** «Начать» ставит `started_at`, «Завершить» — `completed_at` и реальную `duration_minutes` (если не передана). В карточке пациента (история болезни) у начатых приёмов показывается «с–до» (например, 12:05–12:31); у ненчатых времени нет. Во всех списках приёмов, очереди, календаре и на стойке вместо времени — «№N». Календарь недели — колонки по дням, внутри пациенты по номерам.
+- **Миграция `c5d6e7f8a9b0`:** старые приёмы пронумерованы по прежнему времени слота (внутри врача и дня), для начатых/завершённых `started_at` взят из слота, колонка `time` оставлена (nullable) и не используется.
+- Порядок приёмов в API: дата → врач → номер. `seed.py`/`seed_demo.py` создают приёмы с номерами; слоты из сетки в демо-данных нужны только чтобы правдоподобно задать фактическое время.
+
+## Изменения: редизайн рабочего места врача
+
+- **«Живая очередь» объединена с «Приёмами».** Пункта меню и страницы нет, `/queue` перенаправляет на `/appointments`. На «Приёмах» сверху карточка «Следующий пациент» (наименьший номер среди записанных, только у тех, кто сам принимает, и только по своей очереди), ниже список дня с вкладками «Все / Далее / Проведены / Отменены» (по умолчанию «Далее» — без следующего пациента) и настоящими счётчиками. Колонки: «Очередь» (№N), «Пациент и жалоба», «Статус», «Действие» (+ «Врач», если видны приёмы нескольких врачей). «Начать» меняет статус на «на приёме» и открывает осмотр; меню «⋯»: «Вызвать вне очереди», «Перенести», «Отменить» (с окном причины). У проведённых вместо «Начать» — «Протокол». `doctor` всегда видит только свои приёмы; `head_doctor` — «Только мои» по умолчанию и «Все врачи»; `reception`/`nurse` — приёмы всех врачей с колонкой «Врач».
+- **Дашборд врача** (`doctor`, `head_doctor`, `nurse`): приветствие по времени суток, четыре числа дня («Приёмов сегодня» — все, включая отменённые; «Проведено»; «Осталось принять»; «Отменено»), «Расписание на сегодня» (по номерам, без отменённых, до 7 строк), зелёная карточка «Следующий», «Неделя» (новые пациенты, диспансерные, среднее время приёма). У `head_doctor` числа дня — по его собственным приёмам.
+- **Пациенты:** вкладки «Все / Мои пациенты / Диспансерные / Новые» — параметр `filter` у `GET /api/patients` (`mine` — были приёмы у текущего сотрудника, `dispensary`, `new` — ещё нет завершённых приёмов; другое значение → 422). «Мои пациенты» показывается только врачам. Колонки: пациент (ФИО, ИИН), возраст (+дата рождения), приём («Запись»/«Был»/«Сегодня» + дата), заболевания (до двух тегов и «+N»); вся строка — ссылка на карточку; пагинация с многоточием.
+- **Каркас:** сайдбар 248px, шрифт Inter, дизайн-токены в `front/src/index.css`, шапка без имени сотрудника, без хлебных крошек.
+
+## Изменения: «Дашборд» и «Приёмы» объединены (врач, главврач, медсестра)
+
+- На `/` у `doctor`/`head_doctor`/`nurse` одна страница: слева карточка со списком приёмов выбранного дня (выбор даты, вкладки «Все / Осталось / Проведены / Отменены» со счётчиками, по умолчанию «Все»), справа «Сейчас на приёме» (если сегодня есть приём в работе), «Следующий» (сегодня, наименьший номер среди записанных) и «Неделя». Четырёх плиток с цифрами нет. Переключатель «Сегодня / Календарь» в шапке показывает недельный календарь вместо списка (справа остаётся только «Неделя»).
+- Порядок списка: активные (на приёме, записан) по номеру, затем проведённые, отменённые всегда в конце (приглушены, ФИО зачёркнуто). Время приёма нигде не показывается — только «№N». Дата списка (`?date=`) и неделя календаря (`?week=`) хранятся в адресе.
+- Пока кто-то «На приёме», «Начать» в строках и «Начать приём» неактивны («Сначала завершите текущий приём»). Для другого дня «Начать» и карточки справа не показываются. Меню «⋯»: «Перенести», «Отменить» (у отменённого приёма — недоступны).
+- «Приёмы» убраны из меню врача, главврача и медсестры; `/appointments` перенаправляет на `/` с сохранением параметров. Главврач видит в списке только свои приёмы (режима «Все врачи» больше нет). У регистратуры остаётся отдельная страница `/appointments` (приёмы всех врачей, колонка «Врач»).
+- Приветствие: 05:00–11:59 «Доброе утро», 12:00–17:59 «Добрый день», 18:00–22:59 «Добрый вечер», 23:00–04:59 «Доброй ночи». «Среднее время приёма» без данных — «—».
+

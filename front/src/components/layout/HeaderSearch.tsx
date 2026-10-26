@@ -39,15 +39,16 @@ export default function HeaderSearch() {
 
   return (
     <div className="relative w-full">
-      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-3" strokeWidth={1.8} aria-hidden />
       <input
         type="search"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
-        placeholder="Поиск пациентов, приёмов..."
-        className="w-full rounded-full border border-gray-200 bg-gray-50/80 py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#1a5c3a]/30 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1a5c3a]/10"
+        placeholder="Поиск пациентов и приёмов"
+        aria-label="Поиск пациентов и приёмов"
+        className="h-10 w-full rounded-[10px] border border-field-line bg-page pl-10 pr-4 text-sm text-ink placeholder:text-ink-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       />
 
       {open && query.trim().length >= 2 && (
@@ -93,8 +94,7 @@ export default function HeaderSearch() {
                           className="block rounded-lg px-2 py-2 text-sm hover:bg-gray-50"
                         >
                           <span className="font-medium text-gray-900">
-                            {appointment.patient} · {appointment.date}{" "}
-                            {appointment.time}
+                            {appointment.patient} · {appointment.date}
                           </span>
                           <span className="mt-0.5 block truncate text-xs text-gray-500">
                             {appointment.complaint}

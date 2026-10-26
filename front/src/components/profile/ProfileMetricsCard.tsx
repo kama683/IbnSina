@@ -10,9 +10,7 @@ function formatValue(value: number) {
 
 export default function ProfileMetricsCard({ metrics }: Props) {
   const rows = [
-    { label: "Пациентов на участке", value: metrics.patientsInArea },
     { label: "Приёмов в текущем месяце", value: metrics.appointmentsInMay },
-    { label: "Диспансерных", value: metrics.dispensary },
     { label: "Лет стажа", value: metrics.experienceYears },
   ];
 

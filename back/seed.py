@@ -6,7 +6,9 @@
 (docs/PHASE0_ANALYSIS.md), чтобы было кем логиниться при проверке RBAC.
 """
 
-from datetime import date
+from datetime import date, datetime, timedelta
+
+from sqlalchemy import func
 
 from app.database import SessionLocal
 from app.models import Appointment, AppointmentStatus, DoctorProfile, Employee, EmployeeRole, EmployeeStatus, Patient, SalaryType
@@ -58,7 +60,6 @@ DOCTOR_EMPLOYEE_DATA = {
 }
 
 DOCTOR_PROFILE_DATA = {
-    "area": "Участок №3",
     "office": "Кабинет 214",
     "workplace": "Городская поликлиника №12, г. Астана, ул. Туран 24",
     "specialty": "Эндокринолог (04.02.001)",
@@ -397,7 +398,7 @@ def _get_or_create_patient(db, short_name: str) -> Patient:
     fields = PATIENTS_DATA[short_name]
 
     if patient is None:
-        patient = Patient(area=DOCTOR_PROFILE_DATA["area"], **fields)
+        patient = Patient(**fields)
         db.add(patient)
         db.flush()
         return patient
@@ -415,7 +416,7 @@ def _get_or_create_appointment(db, employee_id: int, patient, today: date, item:
         .filter(
             Appointment.patient_id == patient.id,
             Appointment.date == today,
-            Appointment.time == item["time"],
+            Appointment.employee_id == employee_id,
         )
         .first()
     )
@@ -429,10 +430,23 @@ def _get_or_create_appointment(db, employee_id: int, patient, today: date, item:
         "duration_minutes": item.get("duration_minutes"),
     }
 
+    # время слота в данных — только чтобы задать фактическое начало начатых и
+    # завершённых приёмов; пациенту оно не назначается, у него номер в очереди
+    started = datetime.combine(today, datetime.strptime(item["time"], "%H:%M").time())
+    if item["status"] in (AppointmentStatus.in_progress, AppointmentStatus.completed):
+        fields["started_at"] = started
+    if item["status"] == AppointmentStatus.completed:
+        fields["completed_at"] = started + timedelta(minutes=item.get("duration_minutes") or 18)
+
     if appointment is None:
+        last = (
+            db.query(func.max(Appointment.queue_number))
+            .filter(Appointment.employee_id == employee_id, Appointment.date == today)
+            .scalar()
+        )
         appointment = Appointment(
             date=today,
-            time=item["time"],
+            queue_number=(last or 0) + 1,
             patient_id=patient.id,
             employee_id=employee_id,
             **fields,

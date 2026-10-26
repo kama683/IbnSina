@@ -1,10 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Appointment } from "@/lib/types";
-import {
-  TIME_SLOTS,
-  calendarStatusStyles,
-  type CalendarWeek,
-} from "@/lib/calendar-utils";
+import { calendarStatusStyles, type CalendarWeek } from "@/lib/calendar-utils";
 
 type Props = {
   appointments: Appointment[];
@@ -15,12 +11,10 @@ type Props = {
   onNextWeek: () => void;
 };
 
-function findAppointment(
-  appointments: Appointment[],
-  date: string,
-  time: string,
-) {
-  return appointments.find((a) => a.date === date && a.time === time);
+function appointmentsOfDay(appointments: Appointment[], date: string) {
+  return appointments
+    .filter((a) => a.date === date)
+    .sort((x, y) => x.queueNumber - y.queueNumber);
 }
 
 export default function AppointmentsCalendar({
@@ -64,11 +58,8 @@ export default function AppointmentsCalendar({
       <div className="overflow-x-auto">
         <div
           className="grid min-w-[900px]"
-          style={{
-            gridTemplateColumns: `56px repeat(${week.days.length}, minmax(0, 1fr))`,
-          }}
+          style={{ gridTemplateColumns: `repeat(${week.days.length}, minmax(0, 1fr))` }}
         >
-          <div className="border-b border-r border-gray-100 bg-gray-50/50" />
           {week.days.map((day) => (
             <div
               key={day.key}
@@ -83,42 +74,24 @@ export default function AppointmentsCalendar({
             </div>
           ))}
 
-          {TIME_SLOTS.map((time) => (
-            <div key={time} className="contents">
-              <div className="flex items-start justify-end border-b border-r border-gray-100 px-2 py-2 text-[11px] tabular-nums text-gray-400">
-                {time}
-              </div>
-              {week.days.map((day) => {
-                const appointment = findAppointment(
-                  appointments,
-                  day.date,
-                  time,
-                );
-                const styles = appointment
-                  ? calendarStatusStyles[appointment.status]
-                  : null;
-
+          {week.days.map((day) => (
+            <div
+              key={`${day.key}-list`}
+              className="min-h-[160px] space-y-1.5 border-r border-gray-100 p-1.5 last:border-r-0"
+            >
+              {appointmentsOfDay(appointments, day.date).map((appointment) => {
+                const styles = calendarStatusStyles[appointment.status];
                 return (
                   <div
-                    key={`${day.key}-${time}`}
-                    className="min-h-[52px] border-b border-r border-gray-100 p-1 last:border-r-0"
+                    key={appointment.id}
+                    className={`rounded-md border-l-[3px] px-2 py-1.5 ${styles.bg} ${styles.border}`}
                   >
-                    {appointment && styles && (
-                      <div
-                        className={`h-full rounded-md border-l-[3px] px-2 py-1.5 ${styles.bg} ${styles.border}`}
-                      >
-                        <p
-                          className={`text-[11px] font-semibold leading-tight ${styles.patient}`}
-                        >
-                          {appointment.patient}
-                        </p>
-                        <p
-                          className={`mt-0.5 line-clamp-2 text-[10px] leading-tight ${styles.text}`}
-                        >
-                          {appointment.complaint}
-                        </p>
-                      </div>
-                    )}
+                    <p className={`text-[11px] font-semibold leading-tight ${styles.patient}`}>
+                      №{appointment.queueNumber} · {appointment.patient}
+                    </p>
+                    <p className={`mt-0.5 line-clamp-2 text-[10px] leading-tight ${styles.text}`}>
+                      {appointment.complaint}
+                    </p>
                   </div>
                 );
               })}

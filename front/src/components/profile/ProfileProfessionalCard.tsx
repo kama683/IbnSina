@@ -13,10 +13,6 @@ export default function ProfileProfessionalCard({
 }: Props) {
   const fields = [
     { label: "Специальность", value: professional.specialty },
-    {
-      label: "Категория квалификации",
-      value: professional.qualificationCategory,
-    },
     { label: "Номер лицензии", value: professional.licenseNumber },
     {
       label: "Лицензия действует до",

@@ -12,7 +12,7 @@ export type SearchAppointmentResult = {
   patientId: string;
   patient: string;
   date: string;
-  time: string;
+  queueNumber: number;
   complaint: string;
   status: string;
 };

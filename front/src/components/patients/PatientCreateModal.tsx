@@ -7,7 +7,6 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onCreated: (patient: Patient) => void;
-  defaultArea?: string;
   prefilledIin?: string;
   /** Если регистратор искал по фамилии — подставляем её в ФИО. */
   prefilledFullName?: string;
@@ -20,7 +19,6 @@ const EMPTY_FORM = {
   gender: "М" as "М" | "Ж",
   phone: "",
   address: "",
-  area: "",
   bloodType: "",
   dispensary: false,
 };
@@ -33,7 +31,6 @@ export default function PatientCreateModal({
   open,
   onClose,
   onCreated,
-  defaultArea = "",
   prefilledIin = "",
   prefilledFullName = "",
 }: Props) {
@@ -43,11 +40,11 @@ export default function PatientCreateModal({
 
   // Компонент не размонтируется при open=false (условный только рендер),
   // поэтому useState-инициализатор ниже не подхватил бы обновлённые
-  // prefilledIin/defaultArea при повторном открытии — синхронизируем явно
+  // prefilledIin при повторном открытии — синхронизируем явно
   // на каждое открытие модалки.
   useEffect(() => {
     if (open) {
-      setForm({ ...EMPTY_FORM, iin: prefilledIin, fullName: prefilledFullName, area: defaultArea });
+      setForm({ ...EMPTY_FORM, iin: prefilledIin, fullName: prefilledFullName });
       setError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,7 +63,6 @@ export default function PatientCreateModal({
         gender: form.gender,
         phone: form.phone || undefined,
         address: form.address || undefined,
-        area: form.area,
         bloodType: form.bloodType || undefined,
         dispensary: form.dispensary,
       });
@@ -130,14 +126,6 @@ export default function PatientCreateModal({
               <option value="М">М</option>
               <option value="Ж">Ж</option>
             </select>
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-gray-600">Участок</span>
-            <input
-              value={form.area}
-              onChange={(e) => setForm((prev) => ({ ...prev, area: e.target.value }))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2"
-            />
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-gray-600">Телефон</span>

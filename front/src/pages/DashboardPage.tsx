@@ -1,4 +1,5 @@
 import DoctorDashboard from "@/components/dashboard/doctor/DoctorDashboard";
+import PageHeader from "@/components/layout/PageHeader";
 import ReceptionHome from "@/components/dashboard/reception/ReceptionHome";
 import { useEmployee } from "@/lib/auth/employee-context";
 
@@ -17,13 +18,8 @@ export default function DashboardPage() {
       return <DoctorDashboard />;
     default:
       return (
-        <div className="mx-auto max-w-[1400px] space-y-5">
-          <div>
-            <p className="text-xs text-gray-400">Главная</p>
-            <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-gray-900">
-              Добрый день, {employee.firstNamePatronymic}
-            </h1>
-          </div>
+        <div className="mx-auto max-w-[1240px] space-y-6">
+          <PageHeader title={`Добрый день, ${employee.firstNamePatronymic}`} />
           {/* Этап 0: для accountant/admin рабочих виджетов ещё нет — появятся
               на следующих этапах (финансы/учёт, соответственно). */}
           <div className="rounded-xl border border-gray-200/80 bg-white p-5 text-sm text-gray-500 shadow-sm">

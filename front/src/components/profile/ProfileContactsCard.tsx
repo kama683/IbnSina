@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Check, Mail, MapPin, Pencil, Phone, X } from "lucide-react";
+import { Check, Mail, Pencil, Phone, X } from "lucide-react";
 
 type Props = {
   phone: string;
   email: string;
-  workplace: string;
   onPhoneChange: (value: string) => void;
   onEmailChange: (value: string) => void;
 };
@@ -14,7 +13,6 @@ type EditingField = "phone" | "email" | null;
 export default function ProfileContactsCard({
   phone,
   email,
-  workplace,
   onPhoneChange,
   onEmailChange,
 }: Props) {
@@ -60,13 +58,6 @@ export default function ProfileContactsCard({
       value: email,
       editable: true,
       field: "email",
-    },
-    {
-      key: "workplace",
-      icon: MapPin,
-      value: workplace,
-      editable: false,
-      field: null,
     },
   ];
 

@@ -37,14 +37,6 @@ export function shortOffice(office: string): string {
   return trimmed.replace(/^кабинет\s*/i, "каб. ");
 }
 
-/** «Участок №4» → «участок 4»; голое «1» (так участок заведён у части
- * пациентов) → «участок 1»; всё остальное — как есть. */
-export function areaLabel(area: string): string {
-  const trimmed = area.trim();
-  if (/^\d+$/.test(trimmed)) return `участок ${trimmed}`;
-  return trimmed.replace(/^участок\s*№?\s*/i, "участок ").toLowerCase();
-}
-
 /** Инициалы для кружка: «Иванов Иван Иванович» → «ИИ». */
 export function initialsOf(fullName: string): string {
   const [surname = "", name = ""] = fullName.trim().split(/\s+/);
@@ -56,5 +48,5 @@ export function isFullIin(value: string): boolean {
 }
 
 export function patientSummaryLine(patient: Patient, lastVisit: string): string {
-  return [patient.ageLabel, areaLabel(patient.area), lastVisit].filter(Boolean).join(" · ");
+  return [patient.ageLabel, lastVisit].filter(Boolean).join(" · ");
 }

@@ -29,7 +29,7 @@ def _make_doctor(db_session, *, email: str, role: EmployeeRole, status: Employee
     db_session.add(employee)
     db_session.flush()
     db_session.add(
-        DoctorProfile(employee_id=employee.id, specialty="Терапевт", area="Участок 1")
+        DoctorProfile(employee_id=employee.id, specialty="Терапевт")
     )
     db_session.add(
         User(
@@ -82,7 +82,7 @@ def test_employee_list_excludes_fired_and_includes_head_doctor(client, db_sessio
     assert fired_doctor.id not in ids, "уволенный не должен попадать в список"
 
     item = next(item for item in body if item["id"] == active_doctor.id)
-    assert set(item.keys()) == {"id", "shortName", "area", "specialty"}, (
+    assert set(item.keys()) == {"id", "shortName", "specialty"}, (
         "в ответе не должно быть кадровой PII (phone/email/salary/...)"
     )
 

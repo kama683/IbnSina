@@ -32,7 +32,6 @@ export function getCurrentEmployee(): Promise<Employee> {
 export interface DoctorListItem {
   id: number;
   shortName: string;
-  area: string;
   specialty: string;
 }
 

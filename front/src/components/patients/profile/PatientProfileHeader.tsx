@@ -36,7 +36,6 @@ export default function PatientProfileHeader({ patient, currentEmployeeRole }: P
     : [
         { label: "Дата рождения", value: patient.birthDate },
         { label: "Группа крови", value: patient.bloodType },
-        { label: "Участок", value: patient.area },
         { label: "Последний приём", value: patient.lastAppointment ?? "—" },
       ];
 
@@ -143,8 +142,7 @@ export default function PatientProfileHeader({ patient, currentEmployeeRole }: P
           patient={patient}
           onClose={() => setBookingOpen(false)}
           onBooked={(appointment) => {
-            setBookingOpen(false);
-            setConfirmation(`Записан на ${appointment.time}, ${appointment.date} · ${appointment.doctor}`);
+            setConfirmation(`Записан: №${appointment.queueNumber}, ${appointment.date} · ${appointment.doctor}`);
             void refresh(); // «Последний приём» и история болезни
           }}
         />

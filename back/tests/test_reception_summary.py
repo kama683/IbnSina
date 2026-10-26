@@ -142,20 +142,23 @@ def test_summary_doctors_queue_for_today(client, db_session):
 
     today = date.today()
 
-    def add(doctor, time, status):
+    numbers: dict[int, int] = {}
+
+    def add(doctor, status):
+        numbers[doctor.id] = numbers.get(doctor.id, 0) + 1
         db_session.add(
             Appointment(
-                date=today, time=time, complaint="Тест", status=status,
+                date=today, queue_number=numbers[doctor.id], complaint="Тест", status=status,
                 patient_id=patient_id, employee_id=doctor.id,
             )
         )
 
-    add(busy, "09:00", AppointmentStatus.in_progress)
-    add(busy, "09:30", AppointmentStatus.scheduled)
-    add(busy, "10:00", AppointmentStatus.scheduled)
-    add(busy, "10:30", AppointmentStatus.cancelled)       # отменённые не считаются
-    add(free, "11:00", AppointmentStatus.scheduled)
-    add(free, "08:00", AppointmentStatus.completed)       # завершённый: врач в списке, но не «ждёт»
+    add(busy, AppointmentStatus.in_progress)
+    add(busy, AppointmentStatus.scheduled)
+    add(busy, AppointmentStatus.scheduled)
+    add(busy, AppointmentStatus.cancelled)       # отменённые не считаются
+    add(free, AppointmentStatus.scheduled)
+    add(free, AppointmentStatus.completed)       # завершённый: врач в списке, но не «ждёт»
     db_session.commit()
 
     summary = _summary(client, headers)

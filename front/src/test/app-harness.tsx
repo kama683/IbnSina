@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { render, within } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import type { Employee, EmployeeRole } from "@/lib/api/employees";
@@ -28,7 +28,7 @@ export function makeAppointment(overrides: Partial<Appointment> = {}): Appointme
     patientId: "5",
     employeeId: "1",
     date: "2026-10-24",
-    time: "09:00",
+    queueNumber: 1,
     patient: "Иванов И.И.",
     complaint: "Головная боль",
     diagnosis: null,
@@ -54,7 +54,6 @@ export function makePatient(overrides: Partial<Patient> = {}): Patient {
     bloodType: "A(II) Rh+",
     phone: "+7 700 000 00 00",
     address: "г. Алматы",
-    area: "Участок №3",
     lastAppointment: null,
     dispensary: false,
     careType: "ambulatory",
@@ -116,4 +115,16 @@ export function setupHarness() {
   vi.stubGlobal("fetch", fetchMock);
   // jsdom не реализует прокрутку, а ScrollRestoration её вызывает
   window.scrollTo = vi.fn();
+}
+
+/** Выбрать врача в окне записи: по умолчанию врач не подставляется. */
+export async function pickDoctor(
+  user: { type: (el: Element, text: string) => Promise<void>; click: (el: Element) => Promise<void> },
+  dialog: HTMLElement,
+  shortName: string,
+): Promise<void> {
+  const input = within(dialog).getByPlaceholderText("Начните вводить фамилию врача");
+  await user.type(input, shortName.slice(0, 4));
+  await user.click(await within(dialog).findByText(shortName));
+  await within(dialog).findByDisplayValue(shortName);
 }

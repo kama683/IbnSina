@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  pickDoctor,
   fetchMock,
   json,
   makeAppointment,
@@ -33,17 +34,17 @@ const reception = makeEmployee("reception", { id: 2 });
 const year = new Date().getFullYear();
 
 const patient = makePatient({
-  id: "5", fullName: "Абдрахманов Мурат Серикович", iin: "870514300123", ageLabel: "39 лет", area: "Участок №4",
+  id: "5", fullName: "Абдрахманов Мурат Серикович", iin: "870514300123", ageLabel: "39 лет",
 });
 const doctors = [
-  { id: 11, shortName: "Серикова А.И.", area: "Участок №4", specialty: "Терапевт" },
-  { id: 12, shortName: "Нурланов Б.С.", area: "Участок №1", specialty: "Терапевт" },
+  { id: 11, shortName: "Серикова А.И.", specialty: "Терапевт" },
+  { id: 12, shortName: "Нурланов Б.С.", specialty: "Терапевт" },
 ];
 const summary = {
   date: `${year}-10-25`, shift: null, queue: { waiting: 0, inProgress: 0 }, doctors: [],
   invoices: { unpaidCount: 0, awaitingApprovalCount: 0, awaitingPayment: [] },
 };
-const booked = makeAppointment({ id: "77", time: "09:30", date: `27.10.${year}`, doctor: "Серикова А.И.", patientId: "5" });
+const booked = makeAppointment({ id: "77", queueNumber: 3, date: `27.10.${year}`, doctor: "Серикова А.И.", patientId: "5" });
 
 function requested(): string[] {
   return fetchMock.mock.calls.map(([url]) => String(url));
@@ -58,10 +59,10 @@ function postBodies(url: string): unknown[] {
 function standBackend(extra: Record<string, unknown> = {}) {
   mockBackend(reception, {
     "/api/reports/reception-summary": summary,
-    "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 5, areas: [] },
+    "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 5 },
     "/api/patients/5/history": [],
     "/api/employees?role=doctor": doctors,
-    "/api/appointments/available-slots?*": ["09:00", "09:30", "10:00"],
+    "/api/appointments/queue-info?*": { works: true, waiting: 2, nextNumber: 3 },
     "POST /api/appointments": booked,
     ...extra,
   });
@@ -73,7 +74,7 @@ async function findPatientOnStand(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("запись прямо со стойки", () => {
-  it("«Записать» открывает модалку с подставленным пациентом и врачом участка; запись → подтверждение, поле очищено и в фокусе", async () => {
+  it("«Записать» открывает модалку с подставленным пациентом; запись → подтверждение, поле очищено и в фокусе", async () => {
     standBackend();
     const user = userEvent.setup();
 
@@ -85,22 +86,27 @@ describe("запись прямо со стойки", () => {
     // пациент подставлен и не редактируется: это текст, а не поле выбора
     expect(within(dialog).getByText(/Абдрахманов Мурат Серикович/)).toBeInTheDocument();
     expect(within(dialog).queryByPlaceholderText("Начните вводить ФИО или ИИН")).toBeNull();
-    // врач участка пациента выбран по умолчанию (участок №4 → Серикова)
-    expect(await within(dialog).findByDisplayValue("Серикова А.И.")).toBeInTheDocument();
+    // врач по умолчанию не подставляется — регистратор выбирает сам
+    expect(within(dialog).getByPlaceholderText("Начните вводить фамилию врача")).toHaveValue("");
+    await pickDoctor(user, dialog, "Серикова А.И.");
 
     // жалоба обязательна: без неё «Записать» неактивна
     const submit = within(dialog).getByRole("button", { name: "Записать" });
-    await user.selectOptions(await within(dialog).findByLabelText("Время"), "09:30");
     expect(submit).toBeDisabled();
     await user.type(within(dialog).getByLabelText("Жалоба"), "Головная боль");
     expect(submit).toBeEnabled();
     await user.click(submit);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(`Записан на 09:30, 27 октября · Серикова А.И.`);
+    // окно остаётся открытым: подтверждение и выбор «ещё одного / готово»
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("пациент №3, 27 октября · Серикова А.И.");
+    expect(within(dialog).getByRole("button", { name: "Записать ещё одного" })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Готово" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Записан: №3, 27 октября · Серикова А.И.");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(postBodies("/api/appointments")).toEqual([
-      expect.objectContaining({ patientId: 5, employeeId: 11, time: "09:30", complaint: "Головная боль" }),
+      expect.objectContaining({ patientId: 5, employeeId: 11, complaint: "Головная боль" }),
     ]);
+    expect(postBodies("/api/appointments")[0]).not.toHaveProperty("time");
     // сценарий завершён: поле пустое, фокус в нём, карточка пациента убрана
     const input = screen.getByLabelText("ИИН или фамилия пациента");
     expect(input).toHaveValue("");
@@ -120,7 +126,7 @@ describe("запись прямо со стойки", () => {
     await findPatientOnStand(user);
     await user.click(screen.getByRole("button", { name: "Записать" }));
     const dialog = await screen.findByRole("dialog");
-    await within(dialog).findByDisplayValue("Серикова А.И.");
+    await pickDoctor(user, dialog, "Серикова А.И.");
     await vi.waitFor(() => expect(requested().some((u) => u.includes("employeeId=11"))).toBe(true));
 
     const doctor = within(dialog).getByDisplayValue("Серикова А.И.");
@@ -131,21 +137,49 @@ describe("запись прямо со стойки", () => {
     await vi.waitFor(() => expect(requested().some((u) => u.includes("employeeId=12"))).toBe(true));
   });
 
-  it("слот заняли, пока форма была открыта (409): ошибка в окне, форма остаётся", async () => {
-    standBackend({ "POST /api/appointments": () => json(409, { detail: "На это время уже есть приём" }) });
+  it("ошибка бэкенда при записи (врач не принимает в этот день): сообщение в окне, форма остаётся", async () => {
+    standBackend({ "POST /api/appointments": () => json(400, { detail: "Врач не принимает в этот день недели" }) });
     const user = userEvent.setup();
 
     renderApp("/");
     await findPatientOnStand(user);
     await user.click(screen.getByRole("button", { name: "Записать" }));
     const dialog = await screen.findByRole("dialog");
-    await user.selectOptions(await within(dialog).findByLabelText("Время"), "09:00");
+    await pickDoctor(user, dialog, "Серикова А.И.");
     await user.type(within(dialog).getByLabelText("Жалоба"), "Кашель");
     await user.click(within(dialog).getByRole("button", { name: "Записать" }));
 
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("На это время уже есть приём");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Врач не принимает в этот день недели");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("под датой показана очередь врача: сколько ждёт и какой номер получит пациент", async () => {
+    standBackend();
+    const user = userEvent.setup();
+
+    renderApp("/");
+    await findPatientOnStand(user);
+    await user.click(screen.getByRole("button", { name: "Записать" }));
+    const dialog = await screen.findByRole("dialog");
+    await pickDoctor(user, dialog, "Серикова А.И.");
+
+    expect(await within(dialog).findByText(/В очереди уже 2/)).toBeInTheDocument();
+    expect(within(dialog).getByText("№3")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Время")).toBeNull();
+  });
+
+  it("врач в выбранный день не принимает — предупреждение, запись не блокируется на клиенте", async () => {
+    standBackend({ "/api/appointments/queue-info?*": { works: false, waiting: 0, nextNumber: 1 } });
+    const user = userEvent.setup();
+
+    renderApp("/");
+    await findPatientOnStand(user);
+    await user.click(screen.getByRole("button", { name: "Записать" }));
+    const dialog = await screen.findByRole("dialog");
+    await pickDoctor(user, dialog, "Серикова А.И.");
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Врач в этот день не принимает");
   });
 
   it("«Отмена» закрывает модалку, пациент остаётся на стойке", async () => {
@@ -163,11 +197,11 @@ describe("запись прямо со стойки", () => {
 });
 
 describe("«не найден» → завести карточку → сразу запись", () => {
-  const created = makePatient({ id: "99", fullName: "Новый Пациент Тестович", iin: "990101300999", area: "Участок №1" });
+  const created = makePatient({ id: "99", fullName: "Новый Пациент Тестович", iin: "990101300999" });
 
   it("создание подставляет введённый ИИН и ведёт сразу в запись, без перехода на карточку", async () => {
     standBackend({
-      "/api/patients?*": { items: [], total: 0, page: 1, limit: 5, areas: [] },
+      "/api/patients?*": { items: [], total: 0, page: 1, limit: 5 },
       "POST /api/patients": created,
       "/api/patients/99/history": [],
     });
@@ -187,13 +221,13 @@ describe("«не найден» → завести карточку → сраз
     expect(within(dialog).getByText(/Новый Пациент Тестович/)).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
     expect(postBodies("/api/patients")).toEqual([expect.objectContaining({ iin: "990101300999" })]);
-    // врач участка нового пациента (участок №1 → Нурланов)
-    expect(await within(dialog).findByDisplayValue("Нурланов Б.С.")).toBeInTheDocument();
+    // врач не подставлен — выбирается вручную
+    expect(within(dialog).getByPlaceholderText("Начните вводить фамилию врача")).toHaveValue("");
   });
 
   it("если запись отменили, созданный пациент остаётся на стойке с кнопкой «Записать»", async () => {
     standBackend({
-      "/api/patients?*": { items: [], total: 0, page: 1, limit: 5, areas: [] },
+      "/api/patients?*": { items: [], total: 0, page: 1, limit: 5 },
       "POST /api/patients": created,
       "/api/patients/99/history": [],
     });
@@ -211,7 +245,7 @@ describe("«не найден» → завести карточку → сраз
   });
 
   it("поиск по фамилии: она подставляется в ФИО новой карточки", async () => {
-    standBackend({ "/api/patients?*": { items: [], total: 0, page: 1, limit: 5, areas: [] } });
+    standBackend({ "/api/patients?*": { items: [], total: 0, page: 1, limit: 5 } });
     const user = userEvent.setup();
 
     renderApp("/");
@@ -229,7 +263,7 @@ describe("шапка карточки пациента", () => {
     "/api/patients/5/health-metrics": [],
     "/api/patients/5/vaccinations": [],
     "/api/employees?role=doctor": doctors,
-    "/api/appointments/available-slots?*": ["09:00"],
+    "/api/appointments/queue-info?*": { works: true, waiting: 0, nextNumber: 1 },
     "POST /api/appointments": booked,
   };
 
@@ -252,11 +286,12 @@ describe("шапка карточки пациента", () => {
     renderApp("/patients/5");
     await user.click(await screen.findByRole("button", { name: "Записать на приём" }));
     const dialog = await screen.findByRole("dialog");
-    await user.selectOptions(await within(dialog).findByLabelText("Время"), "09:00");
+    await pickDoctor(user, dialog, "Серикова А.И.");
     await user.type(within(dialog).getByLabelText("Жалоба"), "Плановый осмотр");
     await user.click(within(dialog).getByRole("button", { name: "Записать" }));
+    await user.click(await within(dialog).findByRole("button", { name: "Готово" }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/Записан на 09:30/);
+    expect(await screen.findByRole("status")).toHaveTextContent(/Записан: №3/);
     await vi.waitFor(() => {
       expect(requested().filter((u) => u === "/api/patients/5").length).toBeGreaterThan(1);
     });
@@ -306,10 +341,10 @@ describe("шапка карточки пациента", () => {
 describe("страница /appointments", () => {
   const page = {
     "/api/employees/me/profile": { office: "Каб. 1" },
-    "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 100, areas: [] },
+    "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 100 },
     "/api/appointments?from=*": [],
     "/api/employees?role=doctor": doctors,
-    "/api/appointments/available-slots?*": ["09:00"],
+    "/api/appointments/queue-info?*": { works: true, waiting: 0, nextNumber: 1 },
   };
 
   it("регистратор: «Записать пациента» открывает общую форму с выбором пациента", async () => {
@@ -328,7 +363,7 @@ describe("страница /appointments", () => {
 
     renderApp("/appointments");
 
-    await screen.findByRole("button", { name: "Список" });
+    await screen.findByRole("group", { name: "Режим просмотра" });
     expect(screen.queryByRole("button", { name: "Записать пациента" })).toBeNull();
     expect(requested().some((u) => u.startsWith("/api/patients"))).toBe(false);
     expect(requested().some((u) => u.includes("role=doctor"))).toBe(false);

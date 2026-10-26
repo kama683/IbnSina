@@ -16,7 +16,6 @@ export default function PatientProfileGeneralTab({ patient }: Props) {
     { label: "ИИН", value: patient.iin },
     { label: "Телефон", value: patient.phone },
     { label: "Адрес", value: patient.address },
-    { label: "Участок", value: patient.area },
   ];
 
   const inpatientFields = isInpatient
