@@ -46,18 +46,20 @@ const row = (overrides: Partial<InvoiceListRow> = {}): InvoiceListRow => ({
 const shiftMocks = { "/api/cash-shifts/current": null, "/api/cash-shifts": [] };
 
 describe("касса: вкладки", () => {
-  it("по умолчанию «Смена»; вкладки «Смена», «Счета», «Мои заявки»", async () => {
+  it("по умолчанию «Смена»; регистратору — «Смена», «Счета», «Мои заявки» (без «Возвратов» и отчёта)", async () => {
     mockBackend(reception, shiftMocks);
 
     renderApp("/cash-register");
 
-    expect(await screen.findByRole("button", { name: "Смена" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: "Счета" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Мои заявки" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Смена" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /Счета/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Мои заявки" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Возвраты/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Отчёт за день" })).toBeNull();
     await vi.waitFor(() => expect(requested()).toContain("/api/cash-shifts/current"));
   });
 
-  it("?tab=invoices открывает «Счета»: по умолчанию неоплаченные, страницами по 25", async () => {
+  it("/cash-register/invoices открывает «Счета»: по умолчанию неоплаченные, страницами по 25", async () => {
     mockBackend(reception, {
       "/api/invoices?*": [
         row(),
@@ -66,7 +68,7 @@ describe("касса: вкладки", () => {
       ],
     });
 
-    renderApp("/cash-register?tab=invoices");
+    renderApp("/cash-register/invoices");
 
     expect(await screen.findByText("Ким Л.")).toBeInTheDocument();
     const url = requested().find((u) => u.startsWith("/api/invoices"))!;
@@ -83,7 +85,7 @@ describe("касса: вкладки", () => {
     mockBackend(reception, { "/api/invoices?*": page });
     const user = userEvent.setup();
 
-    renderApp("/cash-register?tab=invoices");
+    renderApp("/cash-register/invoices");
 
     await screen.findByText("П0");
     expect(screen.queryByText("П25")).toBeNull(); // 26-я строка лишь маркер продолжения
@@ -97,7 +99,7 @@ describe("касса: вкладки", () => {
     mockBackend(reception, { "/api/invoices?*": [] });
     const user = userEvent.setup();
 
-    renderApp("/cash-register?tab=invoices");
+    renderApp("/cash-register/invoices");
     await screen.findByText("Счетов по выбранным условиям нет");
     await user.click(screen.getByRole("button", { name: "Возвраты и отмены" }));
 
@@ -114,7 +116,7 @@ describe("касса: вкладки", () => {
     };
     mockBackend(reception, { "/api/refund-requests?mine=true": [mine] });
 
-    renderApp("/cash-register?tab=requests");
+    renderApp("/cash-register/requests");
 
     expect(await screen.findByText("Услуга не оказана")).toBeInTheDocument();
     expect(screen.getByText("На рассмотрении")).toBeInTheDocument();
@@ -125,7 +127,7 @@ describe("касса: вкладки", () => {
   it("«Мои заявки»: пустое состояние", async () => {
     mockBackend(reception, { "/api/refund-requests?mine=true": [] });
 
-    renderApp("/cash-register?tab=requests");
+    renderApp("/cash-register/requests");
 
     expect(await screen.findByText(/Вы ещё не создавали заявок/)).toBeInTheDocument();
   });
@@ -135,8 +137,11 @@ describe("касса: вкладки", () => {
     const user = userEvent.setup();
 
     const { router } = renderApp("/cash-register");
-    await user.click(await screen.findByRole("button", { name: "Счета" }));
+    await user.click(await screen.findByRole("link", { name: /Счета/ }));
 
-    expect(router.state.location.search).toBe("?tab=invoices");
+    expect(router.state.location.pathname).toBe("/cash-register/invoices");
+    expect(screen.getByRole("link", { name: /Счета/ })).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("link", { name: "Смена" }));
+    expect(router.state.location.pathname).toBe("/cash-register");
   });
 });

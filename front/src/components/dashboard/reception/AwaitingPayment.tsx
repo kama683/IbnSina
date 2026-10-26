@@ -58,7 +58,7 @@ export default function AwaitingPayment({ invoices, state, onRetry }: Props) {
           ))}
           {hidden > 0 && (
             <li className="pt-1.5 text-xs text-gray-400">
-              <Link to="/cash-register?tab=invoices" className="hover:text-gray-600">
+              <Link to="/cash-register/invoices" className="hover:text-gray-600">
                 и ещё {hidden} → все счета
               </Link>
             </li>

@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
+import { buttonClass } from "@/components/ui/buttonStyles";
+import { DATA_TD, DATA_TH, DATA_TR } from "@/components/ui/tableStyles";
 import {
   approveRefundRequest,
   rejectRefundRequest,
@@ -10,11 +12,12 @@ import {
 import type { EmployeeRole } from "@/lib/api/employees";
 import { DECIDE_REFUND_ROLES } from "@/lib/roles";
 import { formatTiyn } from "@/lib/currency";
+import { useRefresh } from "@/lib/use-refresh";
 
 const STATUS_CONFIG: Record<RefundRequestStatus, { label: string; className: string }> = {
-  pending: { label: "На рассмотрении", className: "bg-amber-50 text-amber-700" },
-  approved: { label: "Одобрен", className: "bg-emerald-50 text-emerald-700" },
-  rejected: { label: "Отклонён", className: "bg-gray-100 text-gray-500" },
+  pending: { label: "На рассмотрении", className: "bg-warn-soft text-warn-ink" },
+  approved: { label: "Одобрен", className: "bg-brand-soft text-brand" },
+  rejected: { label: "Отклонён", className: "bg-chip-gray text-ink-3" },
 };
 
 type Props = {
@@ -30,6 +33,7 @@ export default function RefundsQueueContent({ initialRequests, currentEmployeeRo
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [onlyPending, setOnlyPending] = useState(true);
+  const refresh = useRefresh();
 
   async function handleApprove(id: number) {
     setBusyId(id);
@@ -37,6 +41,7 @@ export default function RefundsQueueContent({ initialRequests, currentEmployeeRo
     try {
       const updated = await approveRefundRequest(id);
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      void refresh(); // счётчик на вкладке «Возвраты» и суммы кассы
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось одобрить возврат");
     } finally {
@@ -50,6 +55,7 @@ export default function RefundsQueueContent({ initialRequests, currentEmployeeRo
     try {
       const updated = await rejectRefundRequest(id);
       setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      void refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отклонить возврат");
     } finally {
@@ -63,60 +69,62 @@ export default function RefundsQueueContent({ initialRequests, currentEmployeeRo
 
   return (
     <div className="space-y-4">
-      <label className="flex items-center gap-2 text-sm text-gray-600">
+      <label className="flex items-center gap-2 text-sm text-ink-2">
         <input
           type="checkbox"
           checked={onlyPending}
           onChange={(e) => setOnlyPending(e.target.checked)}
+          className="h-4 w-4 accent-brand"
         />
         Только на рассмотрении
       </label>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
-      <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-[14px] border border-line bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-[760px] text-left">
             <thead>
-              <tr className="border-b border-gray-100 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                <th className="px-5 py-2.5">Счёт</th>
-                <th className="px-5 py-2.5">Сумма</th>
-                <th className="px-5 py-2.5">Причина</th>
-                <th className="px-5 py-2.5">Кем создана</th>
-                <th className="px-5 py-2.5">Статус</th>
-                <th className="w-40 px-2 py-2.5" />
+              <tr>
+                <th className={DATA_TH}>Счёт</th>
+                <th className={`${DATA_TH} text-right`}>Сумма</th>
+                <th className={DATA_TH}>Причина</th>
+                <th className={DATA_TH}>Кем создана</th>
+                <th className={DATA_TH}>Статус</th>
+                <th className={`${DATA_TH} w-px`} />
               </tr>
             </thead>
             <tbody>
               {visibleRequests.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/80"
-                >
-                  <td className="px-5 py-3 text-sm">
-                    <Link to={`/invoices/${r.invoiceId}`} className="text-[#1a5c3a] hover:underline">
+                <tr key={r.id} className={DATA_TR}>
+                  <td className={`${DATA_TD} whitespace-nowrap`}>
+                    <Link to={`/invoices/${r.invoiceId}`} className="font-medium text-brand hover:underline">
                       Счёт № {r.invoiceId}
                     </Link>
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-900">{formatTiyn(r.amount)}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{r.reason}</td>
-                  <td className="px-5 py-3 text-sm text-gray-500">{r.requestedBy ?? "—"}</td>
-                  <td className="px-5 py-3">
+                  <td className={`${DATA_TD} whitespace-nowrap text-right font-medium`}>
+                    {formatTiyn(r.amount)}
+                  </td>
+                  <td className={`${DATA_TD} max-w-[260px] truncate text-ink-2`} title={r.reason}>
+                    {r.reason}
+                  </td>
+                  <td className={`${DATA_TD} text-ink-3`}>{r.requestedBy ?? "—"}</td>
+                  <td className={DATA_TD}>
                     <span
-                      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${STATUS_CONFIG[r.status].className}`}
+                      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-[3px] text-xs font-semibold ${STATUS_CONFIG[r.status].className}`}
                     >
                       {STATUS_CONFIG[r.status].label}
                     </span>
                   </td>
-                  <td className="px-2 py-3">
+                  <td className={`${DATA_TD} whitespace-nowrap py-2`}>
                     {r.status === "pending" && (
                       <RoleGate role={currentEmployeeRole} allow={DECIDE_REFUND_ROLES}>
-                        <div className="flex gap-2">
+                        <div className="flex justify-end gap-2">
                           <button
                             type="button"
                             disabled={busyId === r.id}
                             onClick={() => handleApprove(r.id)}
-                            className="rounded-lg bg-[#1a5c3a] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                            className={buttonClass("primary", "sm")}
                           >
                             Одобрить
                           </button>
@@ -124,7 +132,7 @@ export default function RefundsQueueContent({ initialRequests, currentEmployeeRo
                             type="button"
                             disabled={busyId === r.id}
                             onClick={() => handleReject(r.id)}
-                            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 disabled:opacity-50"
+                            className={buttonClass("secondary", "sm")}
                           >
                             Отклонить
                           </button>
@@ -136,7 +144,7 @@ export default function RefundsQueueContent({ initialRequests, currentEmployeeRo
               ))}
               {visibleRequests.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
+                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-ink-3">
                     Заявок нет
                   </td>
                 </tr>

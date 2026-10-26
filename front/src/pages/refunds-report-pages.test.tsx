@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DailyReport } from "@/lib/api/reports";
 import type { RefundRequest } from "@/lib/api/refund-requests";
@@ -34,11 +35,11 @@ const pending: RefundRequest = {
   resultingPaymentId: null,
 };
 
-describe("возвраты", () => {
+describe("возвраты: вкладка кассы", () => {
   it("главврач видит заявку и кнопки решения", async () => {
     mockBackend(headDoctor, { "/api/refund-requests": [pending] });
 
-    renderApp("/refunds");
+    renderApp("/cash-register/refunds");
 
     expect(await screen.findByText(/Услуга не оказана/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Одобрить" })).toBeInTheDocument();
@@ -48,7 +49,7 @@ describe("возвраты", () => {
   it("ресепшен: очередь решений недоступна (его заявки — вкладка в кассе)", async () => {
     mockBackend(reception, { "/api/refund-requests": [pending] });
 
-    renderApp("/refunds");
+    renderApp("/cash-register/refunds");
 
     expect(await screen.findByText("Нет доступа")).toBeInTheDocument();
     expect(requested()).not.toContain("/api/refund-requests");
@@ -57,14 +58,77 @@ describe("возвраты", () => {
   it("врач: «Нет доступа»", async () => {
     mockBackend(makeEmployee("doctor"));
 
-    renderApp("/refunds");
+    renderApp("/cash-register/refunds");
 
     expect(await screen.findByText("Нет доступа")).toBeInTheDocument();
     expect(requested()).not.toContain("/api/refund-requests");
   });
 });
 
-describe("отчёт за день", () => {
+describe("старые адреса", () => {
+  it("/refunds ведёт на вкладку «Возвраты»", async () => {
+    mockBackend(headDoctor, { "/api/refund-requests": [pending] });
+
+    const { router } = renderApp("/refunds");
+
+    expect(await screen.findByText(/Услуга не оказана/)).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/cash-register/refunds");
+    expect(screen.getByRole("link", { name: /Возвраты/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("/reports/daily ведёт на вкладку «Отчёт за день»", async () => {
+    mockBackend(headDoctor, { "/api/reports/daily?*": { date: "2026-10-24", cashTotal: 0, cardTotal: 0, transferTotal: 0, total: 0, refundsTotal: 0, paymentsCount: 0, invoicesTouchedCount: 0 } });
+
+    const { router } = renderApp("/reports/daily");
+
+    expect(await screen.findByText("Итого принято")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/cash-register/report");
+  });
+
+  it("?tab=invoices со старых закладок ведёт на /cash-register/invoices", async () => {
+    mockBackend(reception, { "/api/invoices?*": [] });
+
+    const { router } = renderApp("/cash-register?tab=invoices");
+
+    expect(await screen.findByText("Счетов по выбранным условиям нет")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/cash-register/invoices");
+  });
+});
+
+describe("касса: вкладки главврача", () => {
+  it("пять вкладок в порядке Смена · Счета · Возвраты · Отчёт за день · Мои заявки", async () => {
+    mockBackend(headDoctor, { "/api/cash-shifts/current": null, "/api/cash-shifts": [] });
+
+    renderApp("/cash-register");
+
+    const nav = within(await screen.findByRole("navigation", { name: "Разделы кассы" }));
+    const names = nav.getAllByRole("link").map((link) => link.textContent);
+    expect(names).toEqual(["Смена", "Счета", "Возвраты", "Отчёт за день", "Мои заявки"]);
+  });
+
+  it("решение по возврату обновляет счётчик на вкладке", async () => {
+    let decided = false;
+    mockBackend(headDoctor, {
+      "/api/refund-requests?status=pending": () =>
+        Response.json(decided ? [] : [pending]),
+      "/api/refund-requests": [pending],
+      "POST /api/refund-requests/1/reject": () => {
+        decided = true;
+        return Response.json({ ...pending, status: "rejected" });
+      },
+    });
+    const user = userEvent.setup();
+
+    renderApp("/cash-register/refunds");
+    const tab = await screen.findByRole("link", { name: /Возвраты/ });
+    await vi.waitFor(() => expect(tab).toHaveTextContent("1"));
+    await user.click(await screen.findByRole("button", { name: "Отклонить" }));
+
+    await vi.waitFor(() => expect(tab).not.toHaveTextContent("1"));
+  });
+});
+
+describe("отчёт за день: вкладка кассы", () => {
   const report: DailyReport = {
     date: "2026-10-24",
     cashTotal: 1_000_000,
@@ -83,8 +147,8 @@ describe("отчёт за день", () => {
     mockBackend(headDoctor, { "/api/reports/daily?date=2026-10-24": report });
 
     try {
-      renderApp("/reports/daily");
-      expect(await screen.findByRole("heading", { name: "Отчёт за день" })).toBeInTheDocument();
+      renderApp("/cash-register/report");
+      expect(await screen.findByText("Итого принято")).toBeInTheDocument();
       await vi.waitFor(() => {
         expect(requested()).toContain("/api/reports/daily?date=2026-10-24");
       });
@@ -96,9 +160,9 @@ describe("отчёт за день", () => {
   it("ресепшен: «Нет доступа» (только главврач)", async () => {
     mockBackend(reception);
 
-    renderApp("/reports/daily");
+    renderApp("/cash-register/report");
 
     expect(await screen.findByText("Нет доступа")).toBeInTheDocument();
-    expect(requested().some((url) => url.startsWith("/api/reports"))).toBe(false);
+    expect(requested().some((url) => url.startsWith("/api/reports/daily"))).toBe(false);
   });
 });

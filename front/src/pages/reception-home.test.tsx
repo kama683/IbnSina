@@ -85,13 +85,13 @@ describe("«Стойка регистратуры»: шапка и метрик�
 });
 
 describe("«Врачи сейчас» и «Ждут оплаты»", () => {
-  it("врачи: занят/свободен, кабинет, сколько ждёт; строка ведёт в очередь", async () => {
+  it("врачи: занят/свободен, кабинет, сколько ждёт; строка ведёт в приёмы", async () => {
     mockBackend(reception, { [SUMMARY_URL]: summary() });
 
     renderApp("/");
 
     const busy = (await screen.findByText(/Серикова А\.И\./)).closest("a")!;
-    expect(busy).toHaveAttribute("href", "/queue");
+    expect(busy).toHaveAttribute("href", "/appointments");
     expect(busy).toHaveTextContent("каб. 3");
     expect(busy).toHaveTextContent("на приёме · 2 ждут");
     const free = screen.getByText(/Нурланов Б\.С\./).closest("a")!;
@@ -130,7 +130,7 @@ describe("«Врачи сейчас» и «Ждут оплаты»", () => {
 
     await screen.findByText(/Пациент 0/);
     expect(screen.queryByText(/Пациент 3/)).toBeNull();
-    expect(screen.getByRole("link", { name: /и ещё 9/ })).toHaveAttribute("href", "/cash-register?tab=invoices");
+    expect(screen.getByRole("link", { name: /и ещё 9/ })).toHaveAttribute("href", "/cash-register/invoices");
   });
 
   it("пустые состояния: врачи не принимают, все счета оплачены", async () => {
@@ -152,7 +152,8 @@ describe("«Врачи сейчас» и «Ждут оплаты»", () => {
 
     renderApp("/");
 
-    expect(await screen.findAllByText(/Не удалось загрузить/)).toHaveLength(2);
+    // «Врачи сейчас», «Ждут оплаты» и «Вышли от врача» (его запрос тоже не замокан)
+    await vi.waitFor(() => expect(screen.getAllByText(/Не удалось загрузить/)).toHaveLength(3));
     expect(screen.getByRole("heading", { name: "Стойка регистратуры" })).toBeInTheDocument();
     expect(screen.getByLabelText("ИИН или фамилия пациента")).toBeEnabled();
     expect(valueOf("Ждут приёма")).toBe("—");
@@ -160,11 +161,11 @@ describe("«Врачи сейчас» и «Ждут оплаты»", () => {
 });
 
 describe("«Кто у стойки»", () => {
-  const patient = makePatient({ id: "5", fullName: "Абдрахманов Мурат Серикович", iin: "870514300123", ageLabel: "39 лет", area: "Участок №4" });
+  const patient = makePatient({ id: "5", fullName: "Абдрахманов Мурат Серикович", iin: "870514300123", ageLabel: "39 лет" });
   const year = new Date().getFullYear();
   const history = [
-    { id: "9", patientId: "5", date: `01.12.${year + 1}`, time: "09:00", doctor: "Будущая Б.Б.", status: "scheduled", complaint: "", diagnosis: null },
-    { id: "8", patientId: "5", date: `12.03.${year}`, time: "10:00", doctor: "Серикова А.И.", status: "completed", complaint: "", diagnosis: null },
+    { id: "9", patientId: "5", date: `01.12.${year + 1}`, queueNumber: 1, doctor: "Будущая Б.Б.", status: "scheduled", complaint: "", diagnosis: null },
+    { id: "8", patientId: "5", date: `12.03.${year}`, queueNumber: 2, doctor: "Серикова А.И.", status: "completed", complaint: "", diagnosis: null },
   ];
 
   function backend(extra: Record<string, unknown> = {}) {
@@ -180,7 +181,7 @@ describe("«Кто у стойки»", () => {
   });
 
   it("12 цифр — точный поиск по ИИН; найден: карточка, последний ЗАВЕРШЁННЫЙ визит, кнопки", async () => {
-    backend({ "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 5, areas: [] } });
+    backend({ "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 5 } });
     const user = userEvent.setup();
 
     renderApp("/");
@@ -189,7 +190,7 @@ describe("«Кто у стойки»", () => {
     expect(await screen.findByText("Абдрахманов Мурат Серикович")).toBeInTheDocument();
     expect(requested().some((url) => url.includes("search=870514300123") && url.includes("limit=5"))).toBe(true);
     // будущий приём не считается визитом; врач без склонения
-    expect(await screen.findByText(/39 лет · участок 4 · был 12 марта · Серикова А\.И\./)).toBeInTheDocument();
+    expect(await screen.findByText(/39 лет · был 12 марта · Серикова А\.И\./)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Карточка" })).toHaveAttribute("href", "/patients/5");
     expect(screen.getByRole("button", { name: "Записать" })).toBeInTheDocument();
     expect(screen.getByText("АМ")).toBeInTheDocument();
@@ -197,7 +198,7 @@ describe("«Кто у стойки»", () => {
 
   it("если по ИИН вернулся не тот пациент — это «не найден»", async () => {
     backend({
-      "/api/patients?*": { items: [makePatient({ id: "6", iin: "870514300999" })], total: 1, page: 1, limit: 5, areas: [] },
+      "/api/patients?*": { items: [makePatient({ id: "6", iin: "870514300999" })], total: 1, page: 1, limit: 5 },
     });
     const user = userEvent.setup();
 
@@ -208,7 +209,7 @@ describe("«Кто у стойки»", () => {
   });
 
   it("не найден: пунктирный блок и кнопка «Завести карточку»", async () => {
-    backend({ "/api/patients?*": { items: [], total: 0, page: 1, limit: 5, areas: [] } });
+    backend({ "/api/patients?*": { items: [], total: 0, page: 1, limit: 5 } });
     const user = userEvent.setup();
 
     renderApp("/");
@@ -223,7 +224,7 @@ describe("«Кто у стойки»", () => {
   it("поиск по фамилии: несколько совпадений — список, выбор подставляет пациента", async () => {
     const other = makePatient({ id: "7", fullName: "Абдрахманова Мадина Ермековна", iin: "900101400111" });
     backend({
-      "/api/patients?*": { items: [patient, other], total: 2, page: 1, limit: 5, areas: [] },
+      "/api/patients?*": { items: [patient, other], total: 2, page: 1, limit: 5 },
       "/api/patients/7/history": [],
     });
     const user = userEvent.setup();
@@ -260,7 +261,7 @@ describe("«Кто у стойки»", () => {
   });
 
   it("Escape очищает поле и возвращает в него фокус", async () => {
-    backend({ "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 5, areas: [] } });
+    backend({ "/api/patients?*": { items: [patient], total: 1, page: 1, limit: 5 } });
     const user = userEvent.setup();
 
     renderApp("/");
@@ -287,7 +288,7 @@ describe("меню регистратуры", () => {
     for (const title of ["Приём пациентов", "Деньги", "Прочее"]) {
       expect(nav.getByText(title)).toBeInTheDocument();
     }
-    for (const name of ["Стойка", "Приёмы", "Живая очередь", "Пациенты", "Касса", "Прейскурант", "Настройки"]) {
+    for (const name of ["Стойка", "Приёмы", "Пациенты", "Касса", "Прейскурант", "Профиль"]) {
       expect(nav.getByRole("link", { name })).toBeInTheDocument();
     }
     expect(nav.queryByRole("link", { name: "Возвраты" })).toBeNull();
@@ -297,7 +298,7 @@ describe("меню регистратуры", () => {
     expect(nav.getByText("Деньги").closest("a")).toBeNull();
   });
 
-  it("у главврача пункт «Возвраты» остаётся", async () => {
+  it("у главврача нет отдельных пунктов «Возвраты» и «Отчёт за день» — они в кассе", async () => {
     mockBackend(makeEmployee("head_doctor"), {
       "/api/appointments/current": null,
       "/api/appointments/today": [],
@@ -308,8 +309,10 @@ describe("меню регистратуры", () => {
     renderApp("/");
 
     const nav = within(await screen.findByRole("navigation"));
-    expect(await nav.findByRole("link", { name: "Возвраты" })).toBeInTheDocument();
+    expect(await nav.findByRole("link", { name: "Касса" })).toBeInTheDocument();
     expect(nav.getByRole("link", { name: "Услуги" })).toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: "Возвраты" })).toBeNull();
+    expect(nav.queryByRole("link", { name: "Отчёт за день" })).toBeNull();
   });
 
   it("страница прейскуранта у регистратора так и называется", async () => {

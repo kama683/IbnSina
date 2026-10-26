@@ -12,38 +12,38 @@ type Props = {
  * смены — для head_doctor "любая", п.13 плана). */
 export default function ShiftReportCard({ report, title = "Отчёт по смене" }: Props) {
   return (
-    <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+    <section className="rounded-[14px] border border-line bg-white p-6">
+      <h2 className="text-base font-semibold text-ink">{title}</h2>
       <dl className="mt-3 space-y-1.5 text-sm">
         <div className="flex justify-between">
-          <dt className="text-gray-500">Наличными принято</dt>
-          <dd className="text-gray-900">{formatTiyn(report.cashTotal)}</dd>
+          <dt className="text-ink-3">Наличными принято</dt>
+          <dd className="text-ink">{formatTiyn(report.cashTotal)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Картой принято</dt>
-          <dd className="text-gray-900">{formatTiyn(report.cardTotal)}</dd>
+          <dt className="text-ink-3">Картой принято</dt>
+          <dd className="text-ink">{formatTiyn(report.cardTotal)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Переводом принято</dt>
-          <dd className="text-gray-900">{formatTiyn(report.transferTotal)}</dd>
+          <dt className="text-ink-3">Переводом принято</dt>
+          <dd className="text-ink">{formatTiyn(report.transferTotal)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Возвраты</dt>
-          <dd className="text-gray-900">{formatTiyn(report.refundsTotal)}</dd>
+          <dt className="text-ink-3">Возвраты</dt>
+          <dd className="text-ink">{formatTiyn(report.refundsTotal)}</dd>
         </div>
-        <div className="flex justify-between border-t border-gray-100 pt-1.5">
-          <dt className="text-gray-500">Ожидаемо в кассе</dt>
-          <dd className="text-gray-900">{formatTiyn(report.expectedCash)}</dd>
+        <div className="flex justify-between border-t border-row-line pt-1.5">
+          <dt className="text-ink-3">Ожидаемо в кассе</dt>
+          <dd className="text-ink">{formatTiyn(report.expectedCash)}</dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-gray-500">Фактически в кассе</dt>
-          <dd className="text-gray-900">
+          <dt className="text-ink-3">Фактически в кассе</dt>
+          <dd className="text-ink">
             {report.shift.actualCash !== null ? formatTiyn(report.shift.actualCash) : "—"}
           </dd>
         </div>
         <div className="flex justify-between font-medium">
-          <dt className={report.discrepancy ? "text-red-600" : "text-gray-700"}>Расхождение</dt>
-          <dd className={report.discrepancy ? "text-red-600" : "text-gray-900"}>
+          <dt className={report.discrepancy ? "text-danger" : "text-ink-2"}>Расхождение</dt>
+          <dd className={report.discrepancy ? "text-danger" : "text-ink"}>
             {report.discrepancy !== null ? formatTiyn(report.discrepancy) : "—"}
           </dd>
         </div>

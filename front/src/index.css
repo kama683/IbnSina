@@ -1,14 +1,14 @@
 @import "tailwindcss";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/inter";
 @import "@fontsource-variable/geist-mono";
 
 :root {
-  --background: #f4f6f5;
-  --foreground: #1a1a1a;
-  --medis-primary: #1a5c3a;
-  --medis-primary-hover: #14472e;
-  --medis-primary-light: #e8f5ee;
-  --medis-border: #e5e7eb;
+  --background: #f6f7f5;
+  --foreground: #16211c;
+  --medis-primary: #17604a;
+  --medis-primary-hover: #124d3b;
+  --medis-primary-light: #e8f3ee;
+  --medis-border: #e6e8e4;
   --medis-card: #ffffff;
 }
 
@@ -17,8 +17,39 @@
   --color-foreground: var(--foreground);
   --color-medis-primary: var(--medis-primary);
   --color-medis-primary-light: var(--medis-primary-light);
-  --font-sans: "Geist Variable", system-ui, sans-serif;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+}
+
+/* Дизайн-токены рабочего места врача (Дашборд, Приёмы, Пациенты, каркас). */
+@theme {
+  --color-brand: #17604a;
+  --color-brand-hover: #124d3b;
+  --color-brand-soft: #e8f3ee;
+  --color-brand-tint: #f1f8f4;
+  --color-brand-line: #cfe6db;
+  --color-brand-text-on-dark: #e4f1ea;
+  --color-page: #f6f7f5;
+  --color-line: #e6e8e4;
+  --color-row-line: #eef0ec;
+  --color-subtle: #fafbf9;
+  --color-field-line: #e1e5e0;
+  --color-btn-line: #d5dad5;
+  --color-ink: #16211c;
+  --color-ink-2: #3b4640;
+  --color-ink-3: #5b665f;
+  --color-chevron: #8a948d;
+  --color-danger: #a12d2d;
+  --color-danger-line: #f0caca;
+  --color-danger-soft: #fceded;
+  --color-info: #1e4fb8;
+  --color-info-soft: #e8effc;
+  --color-chip-gray: #eef1ee;
+  --color-notify: #d64545;
+  --color-online: #1f9d6b;
+  /* «требует внимания»: счётчики вкладок кассы, статус «На рассмотрении» */
+  --color-warn-soft: #fdf1d6;
+  --color-warn-ink: #8a4b00;
 }
 
 html {
@@ -34,6 +65,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
 }
 
 #root {

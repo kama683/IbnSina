@@ -7,36 +7,34 @@ const labels = (role: EmployeeRole) => navItemsForRole(role).map((item) => item.
 // Зеркало матрицы §2.2 плана и require_roles(...) в back/app/routers/*.py:
 // если бэкенд меняет права, этот тест напоминает обновить lib/roles.ts.
 describe("меню по ролям", () => {
-  it("ресепшен: «Стойка», касса, прейскурант; без возвратов, отчёта и профиля врача", () => {
+  it("ресепшен: «Стойка», касса, прейскурант; без возвратов и отчёта", () => {
     expect(labels("reception")).toEqual([
-      "Стойка", "Приёмы", "Живая очередь", "Пациенты", "Прейскурант", "Касса", "Настройки",
+      "Стойка", "Приёмы", "Пациенты", "Прейскурант", "Касса", "Профиль",
     ]);
   });
 
-  it("врач: расписание и профиль, без кассы", () => {
+  it("врач: дашборд (приёмы живут на нём), пациенты и профиль; без кассы и услуг", () => {
     expect(labels("doctor")).toEqual([
-      "Дашборд", "Приёмы", "Живая очередь", "Пациенты", "Услуги", "Профиль", "Настройки",
+      "Дашборд", "Пациенты", "Профиль",
     ]);
   });
 
-  it("медсестра: как врач, но без профиля", () => {
+  it("медсестра: как врач", () => {
     expect(labels("nurse")).toEqual([
-      "Дашборд", "Приёмы", "Живая очередь", "Пациенты", "Услуги", "Настройки",
+      "Дашборд", "Пациенты", "Профиль",
     ]);
   });
 
   it("бухгалтер: пациенты, но не расписание и не прейскурант", () => {
-    expect(labels("accountant")).toEqual(["Дашборд", "Пациенты", "Настройки"]);
+    expect(labels("accountant")).toEqual(["Дашборд", "Пациенты", "Профиль"]);
   });
 
-  it("главврач видит всё, включая очередь возвратов", () => {
-    expect(labels("head_doctor")).toHaveLength(10);
-    expect(labels("head_doctor")).toContain("Возвраты");
-    expect(labels("head_doctor")).toContain("Отчёт за день");
+  it("главврач: «Возвраты» и «Отчёт за день» — вкладки кассы, не пункты меню", () => {
+    expect(labels("head_doctor")).toEqual(["Дашборд", "Пациенты", "Услуги", "Касса", "Профиль"]);
   });
 
-  it("admin — не бизнес-роль: только дашборд и настройки", () => {
-    expect(labels("admin")).toEqual(["Дашборд", "Настройки"]);
+  it("admin: дашборд, услуги (управляет прейскурантом) и профиль", () => {
+    expect(labels("admin")).toEqual(["Дашборд", "Услуги", "Профиль"]);
   });
 });
 
@@ -57,19 +55,19 @@ describe("секции меню", () => {
 
   it("регистратура: три секции по сценарию работы", () => {
     expect(sections("reception")).toEqual([
-      ["Приём пациентов", ["Стойка", "Приёмы", "Живая очередь", "Пациенты"]],
+      ["Приём пациентов", ["Стойка", "Приёмы", "Пациенты"]],
       ["Деньги", ["Касса", "Прейскурант"]],
-      ["Прочее", ["Настройки"]],
+      ["Прочее", ["Профиль"]],
     ]);
   });
 
-  it("иконки регистратуры: users, clock, id, banknote", () => {
+  it("иконки регистратуры: users, id, banknote", () => {
     const icons = Object.fromEntries(
       navSectionsForRole("reception").flatMap((s) => s.items.map((i) => [i.href, i.icon])),
     );
     expect(icons).toMatchObject({
-      "/": "desk", "/appointments": "calendar", "/queue": "clock", "/patients": "id",
-      "/cash-register": "banknote", "/services": "services", "/settings": "settings",
+      "/": "desk", "/appointments": "calendar", "/patients": "id",
+      "/cash-register": "banknote", "/services": "services", "/profile": "profile",
     });
   });
 
@@ -81,7 +79,11 @@ describe("секции меню", () => {
       expect(result[0].items.map((i) => i.label)).toEqual(labels(role));
     }
     expect(labels("doctor")).toContain("Дашборд");
-    expect(labels("doctor")).toContain("Услуги");
+    expect(labels("doctor")).not.toContain("Услуги");
+    // «Живая очередь» объединена с «Приёмами» — отдельного пункта нет ни у кого
+    for (const role of ["reception", "doctor", "nurse", "head_doctor"] as const) {
+      expect(labels(role)).not.toContain("Живая очередь");
+    }
   });
 
   it("пустых секций не бывает ни у одной роли", () => {

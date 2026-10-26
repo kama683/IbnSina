@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { DATA_TD, DATA_TH, DATA_TR } from "@/components/ui/tableStyles";
+import { useCashSummary } from "@/components/cash/useCashOverview";
 import { shortInvoiceNumber } from "@/components/dashboard/reception/format";
 import InvoiceStatusBadge from "@/components/invoices/InvoiceStatusBadge";
 import ErrorState from "@/components/ui/ErrorState";
@@ -46,6 +48,8 @@ export default function InvoicesTab() {
   const [filterId, setFilterId] = useState("unpaid");
   const [periodId, setPeriodId] = useState<(typeof PERIODS)[number]["id"]>("all");
   const [pages, setPages] = useState(1);
+  const { summary } = useCashSummary();
+  const awaitingApproval = summary.data?.invoices.awaitingApprovalCount ?? 0;
 
   const filter = STATUS_FILTERS.find((item) => item.id === filterId)!;
   const period = PERIODS.find((item) => item.id === periodId)!;
@@ -74,7 +78,12 @@ export default function InvoicesTab() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {awaitingApproval > 0 && (
+        <p className="rounded-[10px] bg-warn-soft px-4 py-2.5 text-sm font-medium text-warn-ink">
+          Скидок ждёт главврача: {awaitingApproval}
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
           {STATUS_FILTERS.map((item) => (
@@ -84,8 +93,8 @@ export default function InvoicesTab() {
               onClick={() => selectFilter(item.id)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 filterId === item.id
-                  ? "bg-[#e8f5ee] text-[#1a5c3a]"
-                  : "bg-white text-gray-500 ring-1 ring-gray-200 hover:text-gray-700"
+                  ? "bg-brand-soft text-brand"
+                  : "bg-white text-ink-3 ring-1 ring-line hover:text-ink"
               }`}
             >
               {item.label}
@@ -118,42 +127,40 @@ export default function InvoicesTab() {
       ) : !invoices.data ? (
         <PageLoader />
       ) : rows.length === 0 ? (
-        <p className="rounded-xl border border-gray-200/80 bg-white px-5 py-10 text-center text-sm text-gray-400">
+        <p className="rounded-[14px] border border-line bg-white px-5 py-10 text-center text-sm text-ink-3">
           Счетов по выбранным условиям нет
         </p>
       ) : (
-        <section className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm">
-          <table className="w-full text-left">
+        <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left">
             <thead>
-              <tr className="border-b border-gray-100 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                <th className="px-4 py-2.5">Счёт</th>
-                <th className="px-4 py-2.5">Пациент</th>
-                <th className="px-4 py-2.5">Создан</th>
-                <th className="px-4 py-2.5 text-right">Сумма</th>
-                <th className="px-4 py-2.5 text-right">Оплачено</th>
-                <th className="px-4 py-2.5">Статус</th>
+              <tr>
+                <th className={DATA_TH}>Счёт</th>
+                <th className={DATA_TH}>Пациент</th>
+                <th className={DATA_TH}>Создан</th>
+                <th className={`${DATA_TH} text-right`}>Сумма</th>
+                <th className={`${DATA_TH} text-right`}>Оплачено</th>
+                <th className={DATA_TH}>Статус</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((invoice) => (
-                <tr
-                  key={invoice.id}
-                  className="border-b border-gray-50 text-[13px] transition-colors last:border-0 hover:bg-gray-50/80"
-                >
-                  <td className="px-4 py-2.5 font-medium text-gray-900">
-                    <Link to={`/invoices/${invoice.id}`} className="hover:text-[#1a5c3a] hover:underline">
+                <tr key={invoice.id} className={DATA_TR}>
+                  <td className={`${DATA_TD} font-medium`}>
+                    <Link to={`/invoices/${invoice.id}`} className="text-brand hover:underline">
                       {shortInvoiceNumber(invoice.invoiceNumber)}
                     </Link>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-700">{invoice.patientName ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-gray-500">{formatCreated(invoice.createdAt)}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-900">{formatTiyn(invoice.total)}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-500">
+                  <td className={`${DATA_TD} text-ink-2`}>{invoice.patientName ?? "—"}</td>
+                  <td className={`${DATA_TD} whitespace-nowrap text-ink-3`}>{formatCreated(invoice.createdAt)}</td>
+                  <td className={`${DATA_TD} whitespace-nowrap text-right font-medium`}>{formatTiyn(invoice.total)}</td>
+                  <td className={`${DATA_TD} whitespace-nowrap text-right text-ink-3`}>
                     {invoice.paidAmount > 0 ? formatTiyn(invoice.paidAmount) : "—"}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className={DATA_TD}>
                     {invoice.awaitingApproval ? (
-                      <span className="inline-flex rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium leading-4 text-amber-700">
+                      <span className="inline-flex whitespace-nowrap rounded-full bg-warn-soft px-2.5 py-[3px] text-xs font-semibold text-warn-ink">
                         Ждёт главврача
                       </span>
                     ) : (
@@ -164,12 +171,13 @@ export default function InvoicesTab() {
               ))}
             </tbody>
           </table>
+          </div>
           {hasMore && (
-            <div className="border-t border-gray-100 p-3 text-center">
+            <div className="border-t border-row-line p-3 text-center">
               <button
                 type="button"
                 onClick={() => setPages((value) => value + 1)}
-                className="text-sm font-medium text-[#1a5c3a] hover:underline"
+                className="text-sm font-semibold text-brand hover:underline"
               >
                 Показать ещё
               </button>

@@ -69,7 +69,7 @@ export const ANY_STAFF_ROLES: EmployeeRole[] = [
 export const MANAGE_ANY_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "head_doctor"];
 
 // Кто может записывать на приём = _MULTI_DOCTOR_BOOKING в appointments.py
-// (POST /appointments и GET /appointments/available-slots). У медсестры оба
+// (POST /appointments и GET /appointments/queue-info). У медсестры оба
 // запроса отвечают 403 — ей кнопку записи не показываем.
 export const BOOK_APPOINTMENT_ROLES: EmployeeRole[] = ["reception", "doctor", "head_doctor"];
 
@@ -86,13 +86,10 @@ export const CHECK_IN_ROLES: EmployeeRole[] = ["doctor", "head_doctor"];
 
 // Этап 2, коммит 1 (docs/PHASE2_ANALYSIS.md §6, решение A) — прейскурант:
 // accountant вне доступа даже на чтение (= _VIEW_SERVICES в services.py).
-export const VIEW_SERVICES_ROLES: EmployeeRole[] = [
-  "reception",
-  "doctor",
-  "nurse",
-  "head_doctor",
-];
-export const MANAGE_SERVICES_ROLES: EmployeeRole[] = ["head_doctor"];
+// Врачи и медсёстры прейскурант не видят; reception только читает (цены нужны
+// для счетов), правят head_doctor и admin.
+export const VIEW_SERVICES_ROLES: EmployeeRole[] = ["reception", "head_doctor", "admin"];
+export const MANAGE_SERVICES_ROLES: EmployeeRole[] = ["head_doctor", "admin"];
 
 // Этап 2, коммиты 3-6 — касса/счета/возвраты: reception и head_doctor
 // (= _MANAGE_INVOICE/_MANAGE_SHIFT/_REQUEST_REFUND в back/app/routers/*.py).
@@ -104,17 +101,14 @@ export const VIEW_DAILY_REPORT_ROLES: EmployeeRole[] = ["head_doctor"];
 export type NavIcon =
   | "dashboard"
   | "calendar"
-  | "queue"
   | "patients"
   | "profile"
-  | "settings"
   | "services"
   | "cash"
   | "refund"
   | "reports"
   // иконки меню регистратуры (см. NAV_OVERRIDES)
   | "desk"
-  | "clock"
   | "id"
   | "banknote";
 
@@ -127,17 +121,14 @@ export type NavItemConfig = {
 
 export const NAV_ITEMS: NavItemConfig[] = [
   { href: "/", label: "Дашборд", icon: "dashboard", roles: "all" },
-  { href: "/appointments", label: "Приёмы", icon: "calendar", roles: VIEW_SCHEDULE_ROLES },
-  { href: "/queue", label: "Живая очередь", icon: "queue", roles: VIEW_SCHEDULE_ROLES },
+  // Приёмы врача, главврача и медсестры живут на дашборде; отдельная страница — у регистратуры.
+  { href: "/appointments", label: "Приёмы", icon: "calendar", roles: ["reception"] },
   { href: "/patients", label: "Пациенты", icon: "patients", roles: ANY_STAFF_ROLES },
   { href: "/services", label: "Услуги", icon: "services", roles: VIEW_SERVICES_ROLES },
   { href: "/cash-register", label: "Касса", icon: "cash", roles: MANAGE_CASH_ROLES },
-  // Заявки на возврат решает только главврач; регистратор видит свои заявки
-  // вкладкой внутри /cash-register, отдельного пункта меню у него нет.
-  { href: "/refunds", label: "Возвраты", icon: "refund", roles: DECIDE_REFUND_ROLES },
-  { href: "/reports/daily", label: "Отчёт за день", icon: "reports", roles: VIEW_DAILY_REPORT_ROLES },
-  { href: "/profile", label: "Профиль", icon: "profile", roles: HAS_DOCTOR_PROFILE_ROLES },
-  { href: "/settings", label: "Настройки", icon: "settings", roles: "all" },
+  // «Возвраты» и «Отчёт за день» — вкладки внутри /cash-register (видны по ролям).
+  // «Профиль» и «Настройки» — одна страница для всех ролей.
+  { href: "/profile", label: "Профиль", icon: "profile", roles: "all" },
 ];
 
 type NavOverride = { label?: string; icon?: NavIcon };
@@ -148,7 +139,6 @@ type NavOverride = { label?: string; icon?: NavIcon };
 const NAV_OVERRIDES: Partial<Record<EmployeeRole, Record<string, NavOverride>>> = {
   reception: {
     "/": { label: "Стойка", icon: "desk" },
-    "/queue": { icon: "clock" },
     "/patients": { icon: "id" },
     "/cash-register": { icon: "banknote" },
     "/services": { label: "Прейскурант" },
@@ -160,9 +150,9 @@ type NavSectionConfig = { title: string; hrefs: string[] };
 /** Секции меню. Роль без записи здесь получает одну секцию «Меню» — как было. */
 const NAV_SECTIONS: Partial<Record<EmployeeRole, NavSectionConfig[]>> = {
   reception: [
-    { title: "Приём пациентов", hrefs: ["/", "/appointments", "/queue", "/patients"] },
+    { title: "Приём пациентов", hrefs: ["/", "/appointments", "/patients"] },
     { title: "Деньги", hrefs: ["/cash-register", "/services"] },
-    { title: "Прочее", hrefs: ["/settings"] },
+    { title: "Прочее", hrefs: ["/profile"] },
   ],
 };
 
