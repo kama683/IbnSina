@@ -14,6 +14,7 @@ import {
   IdCard,
   Banknote,
 } from "lucide-react";
+import Avatar from "@/components/ui/Avatar";
 import { logout } from "@/lib/api/auth";
 import type { Employee } from "@/lib/api/employees";
 import { ROLE_LABELS, navSectionsForRole, type NavIcon } from "@/lib/roles";
@@ -90,9 +91,11 @@ export default function Sidebar({ employee, className = "" }: SidebarProps) {
       {/* Сотрудник внизу — данные приходят из сессии (RequireAuth) */}
       <div className="border-t border-line pt-4">
         <div className="flex items-center gap-3 px-1.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-bold text-brand">
-            {employee.initials}
-          </div>
+          <Avatar
+            url={employee.avatarUrl}
+            initials={employee.initials}
+            className="h-9 w-9 text-[13px] font-bold"
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-ink">{employee.shortName}</p>
             <p className="truncate text-xs text-ink-3">

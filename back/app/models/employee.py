@@ -56,6 +56,9 @@ class Employee(Base):
     )
     base_salary: Mapped[int | None] = mapped_column(nullable=True)
     revenue_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    # Имя файла аватарки в AVATAR_DIR (app/services/avatars.py); меняется при
+    # каждой загрузке — служит и версией для сброса кэша браузера.
+    avatar_filename: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Задел на филиал — таблицы Branch пока нет (мультифилиальность вне Этапа 0), FK намеренно нет.
     branch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

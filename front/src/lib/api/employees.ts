@@ -1,4 +1,4 @@
-import { apiGet } from "./api";
+import { apiDelete, apiGet, apiPutFile } from "./api";
 
 export type EmployeeRole =
   | "reception"
@@ -19,6 +19,8 @@ export interface Employee {
   role: EmployeeRole;
   positionTitle: string;
   status: EmployeeStatus;
+  /** URL аватарки (`?v=` меняется при каждой загрузке) или null, если не задана. */
+  avatarUrl: string | null;
 }
 
 /** Текущий сотрудник — единая точка входа для layout/Sidebar/Header,
@@ -40,4 +42,13 @@ export interface DoctorListItem {
  * §6.1 решение A). */
 export function getDoctors(): Promise<DoctorListItem[]> {
   return apiGet<DoctorListItem[]>("/api/employees?role=doctor");
+}
+
+/** PUT /api/employees/me/avatar — JPEG/PNG/WebP до 5 МБ. */
+export function uploadMyAvatar(file: Blob): Promise<{ avatarUrl: string | null }> {
+  return apiPutFile<{ avatarUrl: string | null }>("/api/employees/me/avatar", file);
+}
+
+export function deleteMyAvatar(): Promise<{ avatarUrl: string | null }> {
+  return apiDelete<{ avatarUrl: string | null }>("/api/employees/me/avatar");
 }

@@ -14,6 +14,7 @@ const employee: Employee = {
   initials: "РИ",
   role: "reception",
   positionTitle: "Администратор",
+  avatarUrl: null,
   status: "active",
 };
 

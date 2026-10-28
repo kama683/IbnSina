@@ -94,16 +94,19 @@ function send(
   body: unknown,
   init?: RequestInit,
 ): Promise<Response> {
+  // Blob (загрузка файла) уходит как есть со своим типом, остальное — JSON.
+  const isBlob = body instanceof Blob;
+  const contentType = isBlob ? body.type : "application/json";
   return fetch(`${API_URL}${path}`, {
     ...init,
     method,
     credentials: "include",
     headers: {
       Accept: "application/json",
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(body !== undefined && contentType ? { "Content-Type": contentType } : {}),
       ...init?.headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isBlob ? body : JSON.stringify(body),
   });
 }
 
@@ -146,6 +149,15 @@ export function apiPatch<T>(
   init?: RequestInit,
 ): Promise<T> {
   return request<T>("PATCH", path, body, init);
+}
+
+/** Отправляет файл телом запроса (PUT) — без multipart. */
+export function apiPutFile<T>(
+  path: string,
+  file: Blob,
+  init?: RequestInit,
+): Promise<T> {
+  return request<T>("PUT", path, file, init);
 }
 
 export function apiPost<T>(

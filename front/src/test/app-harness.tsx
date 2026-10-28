@@ -17,6 +17,7 @@ export function makeEmployee(role: EmployeeRole, overrides: Partial<Employee> = 
     initials: "ТТ",
     role,
     positionTitle: "",
+    avatarUrl: null,
     status: "active",
     ...overrides,
   };

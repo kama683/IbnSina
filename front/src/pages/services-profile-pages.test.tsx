@@ -194,6 +194,52 @@ describe("профиль врача", () => {
   });
 });
 
+describe("аватарка", () => {
+  const nurse = makeEmployee("nurse");
+
+  it("выбранный файл уходит PUT-ом, фото появляется, «Удалить фото» его убирает", async () => {
+    let uploaded: { body: unknown; type: string | null } | null = null;
+    mockBackend(nurse, {
+      "PUT /api/employees/me/avatar": (_url: string, init?: RequestInit) => {
+        uploaded = {
+          body: init?.body,
+          type: new Headers(init?.headers).get("Content-Type"),
+        };
+        return json(200, { avatarUrl: "/api/employees/1/avatar?v=1-abc.png" });
+      },
+      "DELETE /api/employees/me/avatar": { avatarUrl: null },
+    });
+    const user = userEvent.setup();
+    const { container } = renderApp("/profile");
+
+    const input = (await screen.findByTestId("avatar-input")) as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "me.png", { type: "image/png" });
+    await user.upload(input, file);
+
+    await vi.waitFor(() => expect(uploaded).not.toBeNull());
+    expect(uploaded!.body).toBeInstanceOf(Blob);
+    expect(uploaded!.type).toBe("image/png");
+    await vi.waitFor(() =>
+      expect(container.querySelector('img[src="/api/employees/1/avatar?v=1-abc.png"]')).not.toBeNull(),
+    );
+
+    await user.click(screen.getByRole("button", { name: /Удалить фото/ }));
+    await vi.waitFor(() => expect(container.querySelector("img")).toBeNull());
+  });
+
+  it("не картинку на сервер не отправляет", async () => {
+    mockBackend(nurse);
+    const user = userEvent.setup({ applyAccept: false });
+    renderApp("/profile");
+
+    const input = await screen.findByTestId("avatar-input");
+    await user.upload(input, new File(["x"], "notes.txt", { type: "text/plain" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Выберите изображение");
+    expect(requested().some((url) => url.includes("/avatar"))).toBe(false);
+  });
+});
+
 describe("настройки", () => {
   it("/settings ведёт на единый профиль, доступно всем ролям", async () => {
     mockBackend(makeEmployee("admin"));

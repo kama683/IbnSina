@@ -1,6 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -10,6 +11,7 @@ from app.models.appointment import Appointment
 from app.models.doctor_profile import DoctorProfile
 from app.models.employee import Employee, EmployeeRole, EmployeeStatus
 from app.schemas.doctor import DoctorProfileUpdateIn
+from app.services import avatars
 from app.services.audit import record_audit
 
 router = APIRouter()
@@ -88,6 +90,12 @@ def _sync_schedules(employee: Employee, schedule: list) -> None:
         row.end = item.end
 
 
+def _avatar_url(employee: Employee) -> str | None:
+    if not employee.avatar_filename:
+        return None
+    return f"/api/employees/{employee.id}/avatar?v={employee.avatar_filename}"
+
+
 def serialize_employee_me(employee: Employee) -> dict:
     return {
         "id": employee.id,
@@ -98,6 +106,7 @@ def serialize_employee_me(employee: Employee) -> dict:
         "role": employee.role.value,
         "positionTitle": employee.position_title or "",
         "status": employee.status.value,
+        "avatarUrl": _avatar_url(employee),
     }
 
 
@@ -113,6 +122,7 @@ def serialize_doctor_profile(db: Session, employee: Employee) -> dict:
         "shortName": employee.short_name,
         "initials": employee.initials,
         "positionTitle": employee.position_title or "",
+        "avatarUrl": _avatar_url(employee),
         "office": profile.office or "",
         "badges": _build_badges(),
         "contacts": {
@@ -225,3 +235,81 @@ def update_my_employee_profile(
 
     employee = _with_relations(db, current_employee.id)
     return serialize_doctor_profile(db, employee)
+
+
+@router.put("/me/avatar")
+async def upload_my_avatar(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(_auth_current_employee),
+):
+    """Тело запроса — сами байты картинки (JPEG/PNG/WebP), без multipart."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > avatars.MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=413, detail="Файл больше 5 МБ")
+
+    data = await request.body()
+    if len(data) > avatars.MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=413, detail="Файл больше 5 МБ")
+    extension = avatars.detect_extension(data)
+    if extension is None:
+        raise HTTPException(status_code=400, detail="Допустимы только JPEG, PNG или WebP")
+
+    employee = _with_relations(db, current_employee.id)
+    previous = employee.avatar_filename
+    employee.avatar_filename = avatars.save_avatar(employee.id, data, extension)
+    record_audit(
+        db,
+        actor_user_id=employee.user.id if employee.user else None,
+        entity_type="employee",
+        entity_id=employee.id,
+        action="update_avatar",
+        changes={"avatar": "set"},
+        request=request,
+    )
+    db.commit()
+    avatars.delete_avatar(previous)
+    return {"avatarUrl": _avatar_url(employee)}
+
+
+@router.delete("/me/avatar")
+def delete_my_avatar(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(_auth_current_employee),
+):
+    employee = _with_relations(db, current_employee.id)
+    previous = employee.avatar_filename
+    if previous is not None:
+        employee.avatar_filename = None
+        record_audit(
+            db,
+            actor_user_id=employee.user.id if employee.user else None,
+            entity_type="employee",
+            entity_id=employee.id,
+            action="update_avatar",
+            changes={"avatar": "removed"},
+            request=request,
+        )
+        db.commit()
+        avatars.delete_avatar(previous)
+    return {"avatarUrl": None}
+
+
+@router.get("/{employee_id}/avatar")
+def get_employee_avatar(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _: Employee = Depends(_auth_current_employee),
+):
+    """Аватарку видит любой авторизованный сотрудник. Имя файла в `?v=` меняется
+    при каждой загрузке, поэтому кэшировать можно надолго."""
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    path = avatars.avatar_path(employee.avatar_filename) if employee and employee.avatar_filename else None
+    if path is None or not path.is_file():
+        raise HTTPException(status_code=404, detail="Аватарка не найдена")
+    return FileResponse(
+        path,
+        media_type=avatars.media_type(path.name),
+        headers={"Cache-Control": "private, max-age=31536000, immutable"},
+    )
